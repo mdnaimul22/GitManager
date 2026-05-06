@@ -86,7 +86,7 @@ if __name__ == "__main__":
                     logger.info(f"Force-killed PID {pid} on port {port}")
                     killed = True
                 except ProcessLookupError:
-                    pass
+                    logger.debug(f"PID {pid} not found when trying to kill")
         except FileNotFoundError:
             try:
                 subprocess.run(
@@ -97,8 +97,8 @@ if __name__ == "__main__":
                 logger.info(f"Force-killed process on port {port} via fuser")
             except (FileNotFoundError, subprocess.TimeoutExpired):
                 logger.warning(f"Cannot auto-kill port {port}: lsof/fuser unavailable")
-        except (subprocess.TimeoutExpired, ValueError):
-            pass
+        except (subprocess.TimeoutExpired, ValueError) as e:
+            logger.debug(f"Port cleanup interrupted: {e}")
 
         if killed:
             # Wait until the port is actually freed (max 3 seconds)

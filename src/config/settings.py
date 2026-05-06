@@ -12,8 +12,8 @@ class Settings(BaseSettings):
     VERSION: str = "2.0.0"
     ENV: str = Field(default="development", validation_alias="APP_ENV")
 
-    RAW_LOG_DIR: str = Field(default="logs", validation_alias="LOG_DIR")
-    RAW_DATA_DIR: str = Field(default="data", validation_alias="DATA_DIR")
+    RAW_LOG_DIR: str = Field(..., validation_alias="LOG_DIR")
+    RAW_DATA_DIR: str = Field(..., validation_alias="DATA_DIR")
 
     def _resolve(self, val: str) -> Path:
 
@@ -47,20 +47,20 @@ class Settings(BaseSettings):
         return self.ENV.lower() == "development"
 
     # ── API Configuration ─────────────────────────────────────────────────
-    API_HOST: str = Field(default="127.0.0.1", validation_alias="API_HOST")
-    API_PORT: int = Field(default=8000, validation_alias="API_PORT")
+    API_HOST: str = Field(..., validation_alias="API_HOST")
+    API_PORT: int = Field(..., validation_alias="API_PORT")
 
     # ── Git Defaults (for new projects) ───────────────────────────────────
-    GIT_AUTO_PUSH: bool = Field(default=True, validation_alias="GIT_AUTO_PUSH")
-    GIT_BRANCH: str = Field(default="main", validation_alias="GIT_BRANCH")
+    GIT_AUTO_PUSH: bool = Field(..., validation_alias="GIT_AUTO_PUSH")
+    GIT_BRANCH: str = Field(..., validation_alias="GIT_BRANCH")
 
     # ── Schedule Defaults (for new projects) ──────────────────────────────
-    SYNC_INTERVAL_MINUTES: int = Field(default=10, validation_alias="SYNC_INTERVAL_MINUTES")
-    SYNC_POLL_SECONDS: int = Field(default=60, validation_alias="SYNC_POLL_SECONDS")
+    SYNC_INTERVAL_MINUTES: int = Field(..., validation_alias="SYNC_INTERVAL_MINUTES")
+    SYNC_POLL_SECONDS: int = Field(..., validation_alias="SYNC_POLL_SECONDS")
 
     # ── Authentication ────────────────────────────────────────────────────
-    GM_USERNAME: str = Field(default="admin", validation_alias="GM_USERNAME")
-    GM_PASSWORD: str = Field(default="admin", validation_alias="GM_PASSWORD")
+    GM_USERNAME: str = Field(..., validation_alias="GM_USERNAME")
+    GM_PASSWORD: str = Field(..., validation_alias="GM_PASSWORD")
 
     # ── Per-project file names (inside data/{project_id}/) ────────────────
     PROJECTS_FILE: str = "projects.json"
