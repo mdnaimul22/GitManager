@@ -1,0 +1,9 @@
+{
+  "forwards": [
+    {
+      "from": "",
+      "to": "{REPO_ROOT}/skills",
+      "enabled": true
+    }
+  ]
+}

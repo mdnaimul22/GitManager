@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitManager — Documentation</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="/css/theme.css">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+
+        .layout {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: row;
+            background: var(--bg-root);
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 40px 0;
+            position: relative;
+        }
+
+        .content-container {
+            max-width: 850px;
+            width: 100%;
+            margin: 0 auto;
+            padding-bottom: 80px;
+        }
+
+        /* Typography for content body */
+        .content-body {
+            font-size: 15px;
+            color: var(--text-2);
+            line-height: 1.6;
+        }
+
+        .content-body h1,
+        .content-body h2,
+        .content-body h3,
+        .content-body h4 {
+            color: var(--text-1);
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+
+        .content-body > div > h1:first-child {
+            margin-top: 0;
+        }
+
+        .content-body h1 {
+            font-size: 1.5em;
+            padding-bottom: .3em;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .content-body h2 {
+            font-size: 1.25em;
+            padding-bottom: .3em;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .content-body h3 {
+            font-size: 1.1em;
+        }
+
+        .content-body p,
+        .content-body ul,
+        .content-body ol {
+            margin-bottom: 16px;
+        }
+
+        .content-body li {
+            margin-bottom: 4px;
+        }
+
+        .content-body a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .content-body a:hover {
+            text-decoration: underline;
+        }
+
+        .content-body code {
+            padding: .2em .4em;
+            margin: 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 85%;
+            background-color: var(--bg-hover);
+            border-radius: 6px;
+        }
+
+        .content-body pre {
+            padding: 16px;
+            overflow: auto;
+            font-size: 85%;
+            line-height: 1.45;
+            background-color: var(--bg-card);
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+
+        .content-body pre code {
+            padding: 0;
+            background-color: transparent;
+            border-radius: 0;
+        }
+
+        .content-body blockquote {
+            padding: 0 1em;
+            color: var(--text-label);
+            border-left: .25em solid var(--border-h);
+            margin-bottom: 16px;
+        }
+
+        .content-body table {
+            border-spacing: 0;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+            width: 100%;
+        }
+
+        .content-body table th,
+        .content-body table td {
+            padding: 6px 13px;
+            border: 1px solid var(--border);
+        }
+
+        .content-body table tr {
+            background-color: var(--bg-root);
+        }
+
+        .content-body table tr:nth-child(2n) {
+            background-color: var(--bg-hover);
+        }
+
+        .content-body img {
+            max-width: 100%;
+            box-sizing: content-box;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .toc-sidebar {
+            width: 260px;
+            border-left: 1px solid var(--border);
+            padding: 10px 20px 30px;
+            overflow-y: auto;
+            background: var(--bg-root);
+            flex-shrink: 0;
+        }
+
+        .toc-sidebar h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 0.8rem;
+            color: var(--text-label);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .toc-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 0.85rem;
+        }
+
+        .toc-list li {
+            margin-bottom: 8px;
+        }
+
+        .toc-list a {
+            color: var(--text-3);
+            text-decoration: none;
+            display: block;
+            line-height: 1.4;
+            transition: all .2s;
+            padding-left: 8px;
+            border-left: 2px solid transparent;
+        }
+
+        .toc-list a:hover {
+            color: var(--accent);
+        }
+
+        .toc-list a.active {
+            color: var(--accent);
+            font-weight: 600;
+            border-left-color: var(--accent);
+        }
+
+        .toc-h2 {
+            margin-left: 0;
+        }
+
+        .toc-h3 {
+            margin-left: 12px;
+            font-size: 0.8rem;
+        }
+
+        .toc-h4 {
+            margin-left: 24px;
+            font-size: 0.75rem;
+        }
+
+        /* ── Sidebar ──────────────────────────────────────── */
+        .sidebar {
+            width: 200px;
+            min-width: 200px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            transition: background .25s;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 10px 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-header h1 {
+            flex: 1;
+            font-size: .9rem;
+            font-weight: 700;
+            color: var(--text-1);
+            margin: 0;
+        }
+
+        .project-list {
+            flex: 1;
+            padding: 4px;
+            overflow-y: auto;
+        }
+
+        .project-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all .15s;
+            margin-bottom: 1px;
+            font-size: .84rem;
+        }
+
+        .project-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .project-item.active {
+            background: var(--bg-active);
+            border-left: 2px solid var(--accent);
+        }
+
+        .project-item .name {
+            flex: 1;
+            font-weight: 500;
+            color: var(--text-2);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .project-item.active .name {
+            color: var(--text-1);
+        }
+
+        .sidebar-footer {
+            display: flex;
+            gap: 4px;
+            padding: 6px;
+            border-top: 1px solid var(--border);
+        }
+
+        .theme-btn {
+            flex: 1;
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            color: var(--text-3);
+            font-size: .72rem;
+            padding: 5px 6px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all .15s;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .theme-btn:hover {
+            border-color: var(--accent);
+            color: var(--text-1);
+        }
+
+        /* ── Block White sidebar override ─────────────────── */
+        [data-theme="block-white"] .sidebar {
+            --sidebar-text-1: #8aadf4;
+            --sidebar-text-2: #cad3f5;
+            --sidebar-text-3: #6e738d;
+            --sidebar-border: #363a4f;
+            --sidebar-bg-hover: #181926;
+            --sidebar-accent: #1e66f5;
+            color: #cdd6f4;
+        }
+
+        [data-theme="block-white"] .sidebar .name {
+            color: var(--sidebar-text-2);
+        }
+
+        [data-theme="block-white"] .sidebar h1,
+        [data-theme="block-white"] .sidebar .project-item.active .name {
+            color: var(--sidebar-text-1);
+        }
+
+        [data-theme="block-white"] .theme-btn {
+            color: var(--sidebar-text-3);
+            border-color: var(--sidebar-border);
+            background: var(--sidebar-bg-hover);
+        }
+
+        [data-theme="block-white"] .theme-btn:hover {
+            color: var(--sidebar-text-2);
+            border-color: var(--sidebar-accent);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .toc-sidebar {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .layout {
+                flex-direction: column;
+                overflow: auto;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                padding: 10px;
+                display: flex;
+                flex-direction: row;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .sidebar-header {
+                margin-bottom: 0;
+                border-bottom: none;
+                padding-bottom: 0;
+                padding: 0;
+            }
+
+            .project-list {
+                display: flex;
+                flex-direction: row;
+                gap: 10px;
+                margin-top: 0;
+                width: auto;
+                align-items: center;
+                overflow-y: visible;
+                padding: 0;
+                flex: 1;
+            }
+
+            .project-list .project-item {
+                padding: 4px 10px;
+                margin-bottom: 0;
+            }
+
+            .sidebar-footer {
+                border-top: none;
+                padding: 0;
+            }
+
+            .main-content {
+                overflow: visible;
+            }
+
+            .content-area {
+                padding: 20px !important;
+            }
+
+            .content-body {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="layout" x-data="docsApp()" x-cloak>
+
+        <!-- Left Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>GitManager Docs</h1>
+            </div>
+
+            <div class="project-list">
+                <div class="project-item" :class="{ active: activeSection === 'what-is-gitmanager' }" @click="scrollTo('what-is-gitmanager')">
+                    <span class="name">What Is GitManager</span>
+                </div>
+                <div class="project-item" :class="{ active: activeSection === 'how-it-works' }" @click="scrollTo('how-it-works')">
+                    <span class="name">How It Works</span>
+                </div>
+                <div class="project-item" :class="{ active: activeSection === '2-creating-a-project' }" @click="scrollTo('2-creating-a-project')">
+                    <span class="name">Creating a Project</span>
+                </div>
+                <div class="project-item" :class="{ active: activeSection === '3-adding-upstreams' }" @click="scrollTo('3-adding-upstreams')">
+                    <span class="name">Add Upstreams</span>
+                </div>
+                <div class="project-item" :class="{ active: activeSection === '4-defining-path-forwards' }" @click="scrollTo('4-defining-path-forwards')">
+                    <span class="name">Add Forwards</span>
+                </div>
+                <div class="project-item" :class="{ active: activeSection === '8-data-storage' }" @click="scrollTo('8-data-storage')">
+                    <span class="name">Data Storage</span>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <button class="theme-btn" @click="cycleTheme()" x-text="themes[themeIndex].name"></button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Content Body -->
+            <div class="content-area" @scroll.passive="onScroll">
+                <div class="content-container">
+
+                    <div x-show="loading" style="text-align: center; padding: 50px; color: var(--text-muted);">
+                        Loading...
+                    </div>
+
+                    <div x-show="!loading" class="content-body">
+                        <!-- README SECTION -->
+                        <div x-show="currentDoc === 'README'" x-ref="README">
+                            <h1 id="what-is-gitmanager">What Is GitManager</h1>
+                            <p>GitManager solves the "commit push" problem. If you maintain multiple projects that share
+                                code, skills, configs, or any files from external upstream repositories, GitManager
+                                automates the entire pipeline:</p>
+                            <pre><code>Upstream Repo A (GitHub)
+Upstream Repo B (GitHub)     →  git pull  →  Forward selected paths  →  git commit + push
+Upstream Repo C (GitHub)                      to your project dirs       to your repo</code></pre>
+                            <p>No more manually pulling repos, copying folders, and committing changes. GitManager does
+                                it all — on a schedule, in the background, with a beautiful dashboard to control
+                                everything.</p>
+                            <p>No cloud. No account required. Runs entirely on your machine.</p>
+
+                            <hr>
+
+                            <h2 id="how-it-works">How It Works</h2>
+                            <h3 id="step-1-create-a-project">Step 1 — Create a Project</h3>
+                            <p>Click <strong>+</strong> in the sidebar. Give it a name and the absolute path to your
+                                local Git repository.</p>
+
+                            <h3 id="step-2-add-upstreams">Step 2 — Add Upstreams</h3>
+                            <p>For each upstream source, define:</p>
+                            <ul>
+                                <li><strong>Name</strong> — a label (e.g. <code>claude-skills</code>)</li>
+                                <li><strong>URL</strong> — the GitHub clone URL (optional if already cloned locally)</li>
+                                <li><strong>Branch</strong> — which branch to track (default: <code>main</code>)</li>
+                                <li><strong>Path</strong> — where to clone it on your machine</li>
+                            </ul>
+
+                            <h3 id="step-3-define-path-forwards">Step 3 — Define Path Forwards</h3>
+                            <p>For each upstream, specify which directories or files to copy into your project:</p>
+                            <pre><code>FROM: /home/user/.claude-skills/skills/python-patterns
+  TO: /home/user/my-project/skills/python-patterns</code></pre>
+
+                            <h3 id="step-4-set-the-schedule">Step 4 — Set the Schedule</h3>
+                            <p>Set the sync interval in minutes in the toolbar. Click <strong>Run</strong> to start the
+                                background worker — it will pull upstreams, forward paths, commit changes, and push
+                                automatically.</p>
+
+                            <hr>
+
+                            <h2 id="api-reference">API Reference</h2>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Method</th>
+                                        <th>Endpoint</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>POST</code></td>
+                                        <td><code>/api/auth/login</code></td>
+                                        <td>Login with username & password</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>POST</code></td>
+                                        <td><code>/api/auth/logout</code></td>
+                                        <td>Logout (requires auth)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>GET</code></td>
+                                        <td><code>/api/auth/check</code></td>
+                                        <td>Check current session</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>GET</code></td>
+                                        <td><code>/api/projects</code></td>
+                                        <td>List all projects</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>POST</code></td>
+                                        <td><code>/api/projects</code></td>
+                                        <td>Create a new project</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>GET</code></td>
+                                        <td><code>/api/projects/{id}</code></td>
+                                        <td>Get project details</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>PUT</code></td>
+                                        <td><code>/api/projects/{id}</code></td>
+                                        <td>Update project config</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>DELETE</code></td>
+                                        <td><code>/api/projects/{id}</code></td>
+                                        <td>Delete a project</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>POST</code></td>
+                                        <td><code>/api/projects/{id}/run</code></td>
+                                        <td>Start background sync worker</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>POST</code></td>
+                                        <td><code>/api/projects/{id}/stop</code></td>
+                                        <td>Stop background sync worker</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <hr>
+                            <h2 id="1-first-launch">1. First Launch</h2>
+                            <p>Start the server:</p>
+                            <pre><code>python main.py</code></pre>
+                            <p>Open <code>http://localhost:8000</code> in your browser. You will see the login page.</p>
+                            <blockquote>
+                                GitManager automatically kills any stale process on port <code>8000</code> before
+                                starting — no manual cleanup needed if you left a session running in the background.
+                            </blockquote>
+                            <p>Enter the credentials you set in <code>.env</code>:</p>
+                            <pre><code>GM_USERNAME=admin
+GM_PASSWORD=your_password</code></pre>
+                            <p>After login, you land directly on the dashboard. Your session is stored as an HMAC-signed
+                                cookie that survives server restarts — you will stay logged in until you explicitly
+                                click <strong>Exit</strong>.</p>
+
+                            <hr>
+
+                            <h2 id="2-creating-a-project">2. Creating a Project</h2>
+                            <p>Click the <strong>+</strong> button at the top-right of the sidebar.</p>
+                            <p>Fill in:</p>
+                            <ul>
+                                <li><strong>Project Name</strong> — a human-readable label (e.g.
+                                    <code>human-skills</code>)</li>
+                                <li><strong>Project Path</strong> — the absolute path to your local Git repository (e.g.
+                                    <code>/home/user/human-skills</code>)</li>
+                            </ul>
+                            <p>Click <strong>Create</strong>. The project appears in the sidebar and is immediately
+                                selected.</p>
+                            <blockquote>
+                                Your project directory must already be a Git repository (<code>git init</code> or
+                                cloned). GitManager does not initialize Git repos for you.
+                            </blockquote>
+
+                            <hr>
+
+                            <h2 id="3-adding-upstreams">3. Adding Upstreams</h2>
+                            <p>Click <strong>+ Upstream</strong> in the toolbar. A new empty row appears in the
+                                <strong>Upstreams</strong> section.</p>
+                            <p>Fill in each field:</p>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Field</th>
+                                        <th>Description</th>
+                                        <th>Example</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Name</strong></td>
+                                        <td>Identifier for this upstream</td>
+                                        <td><code>claude-skills</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>URL</strong></td>
+                                        <td>GitHub clone URL (optional if path already exists)</td>
+                                        <td><code>https://github.com/user/repo.git</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Branch</strong></td>
+                                        <td>Which branch to track</td>
+                                        <td><code>main</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Path</strong></td>
+                                        <td>Where to clone/pull the upstream repo</td>
+                                        <td><code>/home/user/.claude-skills</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Toggle</strong></td>
+                                        <td>Enable or disable pulling this upstream</td>
+                                        <td>ON</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <p><strong>Auto-Clone:</strong> If the path does not exist and a URL is provided,
+                                GitManager will run <code>git clone -b &lt;branch&gt; &lt;url&gt; &lt;path&gt;</code>
+                                on the first sync.</p>
+                            <p><strong>Branch Sync Strategy:</strong> GitManager uses
+                                <code>git fetch origin &lt;branch&gt;</code> +
+                                <code>git reset --hard origin/&lt;branch&gt;</code> instead of plain
+                                <code>git pull</code>. This guarantees a clean sync even if the upstream had a
+                                force-push, without merge conflicts.</p>
+
+                            <hr>
+
+                            <h2 id="4-defining-path-forwards">4. Defining Path Forwards</h2>
+                            <p>Path Forwards define which files or directories from an upstream get copied into your
+                                project.</p>
+                            <p>Click <strong>+ Forward</strong> in the toolbar. A new row appears in the <strong>Path
+                                    Forwards</strong> section.</p>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Field</th>
+                                        <th>Description</th>
+                                        <th>Example</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>From</strong></td>
+                                        <td>Source path (inside the upstream clone)</td>
+                                        <td><code>/home/user/.claude-skills/skills/python-patterns</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>To</strong></td>
+                                        <td>Destination path (inside your project)</td>
+                                        <td><code>/home/user/my-project/skills/python-patterns</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Toggle</strong></td>
+                                        <td>Enable or disable this forward rule</td>
+                                        <td>ON</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <p><strong>Rules:</strong></p>
+                            <ul>
+                                <li>If <code>From</code> is a <strong>directory</strong>, the entire directory is
+                                    copied recursively.</li>
+                                <li>If <code>From</code> is a <strong>file</strong>, only that file is copied.</li>
+                                <li>Multiple forwards can safely write to the same destination directory using the <strong>Wipe-Once Merge Strategy</strong> (the destination is cleared only once before the first forward rule writes to it, preserving subsequent copies).</li>
+                            </ul>
+
+                            <hr>
+
+                            <h2 id="5-configuring-git-settings">5. Configuring Git Settings</h2>
+                            <p>In the <strong>Manual Commit Template</strong> section, customize the commit message
+                                format.</p>
+                            <p>Available placeholders:</p>
+                            <ul>
+                                <li><code>{count}</code> — number of files changed</li>
+                                <li><code>{datetime}</code> — timestamp of the sync</li>
+                            </ul>
+
+                            <hr>
+
+                            <h2 id="6-running-the-sync-worker">6. Running the Sync Worker</h2>
+                            <p>Once your upstreams and forwards are configured, click <strong>Save</strong> to persist
+                                the configuration. Then click <strong>Run</strong>.</p>
+                            <p>What happens on each sync cycle:</p>
+                            <ol>
+                                <li>Pull (or clone) all enabled upstreams</li>
+                                <li>Copy all enabled path forwards into the project</li>
+                                <li>Stage all changes (<code>git add .</code>)</li>
+                                <li>Commit with the configured message template</li>
+                                <li>Push to remote (if <strong>Push</strong> is enabled)</li>
+                            </ol>
+
+                            <hr>
+
+                            <h2 id="7-understanding-the-toolbar">7. Understanding the Toolbar</h2>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Element</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Path</strong></td>
+                                        <td>Project path (username is masked for privacy)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Status badge</strong></td>
+                                        <td>Current worker status</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Branch</strong></td>
+                                        <td>Editable Git branch name</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Interval</strong></td>
+                                        <td>Sync frequency in minutes (editable)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Push</strong></td>
+                                        <td>Toggle for auto-push</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>+ Upstream</strong></td>
+                                        <td>Add a new upstream row</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>+ Forward</strong></td>
+                                        <td>Add a new path forward row</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Save</strong></td>
+                                        <td>Persist all changes to disk</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Run / Stop</strong></td>
+                                        <td>Start or stop the background worker</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <hr>
+
+                            <h2 id="8-data-storage">8. Data Storage</h2>
+                            <p>All project data is stored as JSON files under <code>data/</code>:</p>
+                            <pre><code>data/
+├── projects.json
+└── projects/
+    └── &lt;project-id&gt;/
+        ├── upstream.json
+        ├── forward.json
+        ├── automation.json
+        └── memory.json</code></pre>
+
+                            <hr>
+
+                            <h2 id="9-environment-variables">9. Environment Variables</h2>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Variable</th>
+                                        <th>Required</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>GM_USERNAME</code></td>
+                                        <td>✅</td>
+                                        <td>Dashboard login username</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>GM_PASSWORD</code></td>
+                                        <td>✅</td>
+                                        <td>Dashboard login password</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>GM_SECRET_KEY</code></td>
+                                        <td>✅</td>
+                                        <td>HMAC signing key</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Sidebar (Table of Contents) -->
+            <div class="toc-sidebar" x-show="toc.length > 0">
+                <a href="/" class="btn-outline"
+                    style="display:block; text-align:center; text-decoration:none; padding: 6px 12px; font-size: .8rem; margin-bottom: 15px;">&larr;
+                    Back to App</a>
+                <h3>On this page</h3>
+                <ul class="toc-list">
+                    <template x-for="item in toc" :key="item.id">
+                        <li>
+                            <a :href="'#' + item.id" @click.prevent="scrollTo(item.id)"
+                                :class="['toc-' + item.tag.toLowerCase(), activeSection === item.id ? 'active' : '']"
+                                x-text="item.text"></a>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        if ('scrollRestoration' in history) {
+            history.scrollRestoration = 'manual';
+        }
+
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('docsApp', () => ({
+                themes: [
+                    { id: 'matrix', name: 'Matrix' },
+                    { id: 'matte-black', name: 'Matte Black' },
+                    { id: 'black-brown', name: 'Black Brown' },
+                    { id: 'jam-black', name: 'Jam Black' },
+                    { id: 'jam-navy', name: 'Jam Navy' },
+                    { id: 'pure-white', name: 'Pure White' },
+                    { id: 'matte-white', name: 'Matte White' },
+                    { id: 'cream', name: 'Cream' },
+                    { id: 'block-white', name: 'Block White' },
+                ],
+                themeIndex: 0,
+                currentDoc: 'README',
+                toc: [],
+                loading: true,
+                activeSection: '',
+
+                init() {
+                    // Load theme
+                    const savedTheme = localStorage.getItem('gm-theme');
+                    if (savedTheme) {
+                        const idx = this.themes.findIndex(t => t.id === savedTheme);
+                        if (idx !== -1) this.themeIndex = idx;
+                    }
+                    this.applyTheme();
+
+                    this.loadDoc(this.currentDoc);
+                },
+
+                cycleTheme() {
+                    this.themeIndex = (this.themeIndex + 1) % this.themes.length;
+                    this.applyTheme();
+                },
+
+                applyTheme() {
+                    const theme = this.themes[this.themeIndex];
+                    document.documentElement.setAttribute('data-theme', theme.id);
+                    localStorage.setItem('gm-theme', theme.id);
+                },
+
+                loadDoc(docId) {
+                    this.currentDoc = docId;
+                    this.loading = true;
+                    this.toc = [];
+                    this.activeSection = '';
+
+                    // Simulate loading for smooth transition
+                    setTimeout(() => {
+                        const container = this.$refs[docId];
+                        if (!container) return;
+
+                        const headings = container.querySelectorAll('h2, h3, h4');
+                        const tocItems = [];
+
+                        headings.forEach(h => {
+                            let text = h.textContent.trim();
+
+                            // Clean "Step X -" prefix if exists for cleaner TOC
+                            let cleanText = text.replace(/^Step\s+\d+\s*[—-]\s*/i, '');
+                            // Clean leading emojis and non-alphanumeric characters
+                            cleanText = cleanText.replace(/^[^a-zA-Z0-9]+/, '');
+
+                            // Get ID or generate one
+                            const id = h.id || text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+                            h.id = id;
+
+                            tocItems.push({
+                                id: id,
+                                text: cleanText,
+                                tag: h.tagName
+                            });
+                        });
+
+                        this.toc = tocItems;
+                        this.loading = false;
+
+                        // Restore scroll to top or hash
+                        this.$nextTick(() => {
+                            const scrollContainer = document.querySelector('.content-area');
+                            if (scrollContainer) {
+                                const hash = window.location.hash.substring(1);
+                                if (hash && document.getElementById(hash)) {
+                                    const el = document.getElementById(hash);
+                                    scrollContainer.scrollTop = el.offsetTop - 40;
+                                    this.activeSection = hash;
+                                } else {
+                                    scrollContainer.scrollTop = 0;
+                                    this.onScroll();
+                                }
+                            }
+                        });
+                    }, 50);
+                },
+
+                scrollTo(id) {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        const container = document.querySelector('.content-area');
+                        container.scrollTo({
+                            top: el.offsetTop - 40,
+                            behavior: 'smooth'
+                        });
+                        this.activeSection = id;
+                    }
+                },
+
+                onScroll() {
+                    const container = document.querySelector('.content-area');
+                    if (!container) return;
+                    const scrollPos = container.scrollTop;
+
+                    let current = '';
+                    for (let i = 0; i < this.toc.length; i++) {
+                        const el = document.getElementById(this.toc[i].id);
+                        if (el && (el.offsetTop - 60) <= scrollPos) {
+                            current = this.toc[i].id;
+                        }
+                    }
+                    if (current && this.activeSection !== current) {
+                        this.activeSection = current;
+                    }
+                }
+            }));
+        });
+    </script>
+</body>
+
+</html>

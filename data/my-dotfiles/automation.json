@@ -1,0 +1,17 @@
+{
+  "schedule": {
+    "run_at": null,
+    "interval_minutes": 10,
+    "poll_interval_seconds": 60
+  },
+  "git": {
+    "auto_push": true,
+    "branch": "main",
+    "commit_messages": {
+      "manual": "chore: manual update of {count} file(s) [{datetime}]",
+      "upstreams": {
+        "default": "sync: auto-update from {upstream_name} [{datetime}]"
+      }
+    }
+  }
+}

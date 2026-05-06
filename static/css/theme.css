@@ -1,0 +1,598 @@
+/* ═══════════════════════════════════════════════════════════════
+   GitManager — Theme System
+   Inspired by battle-tested VS Code color themes (MIT License).
+   All 9 themes are derived from popular editor palettes with
+   carefully verified contrast ratios for UI elements.
+   ═══════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+[x-cloak] {
+    display: none !important;
+}
+
+
+/* ── 1. Matrix — custom neon green (unchanged favorite) ────────── */
+:root,
+[data-theme="matrix"] {
+    --bg-root: #050d0a;
+    --bg-sidebar: #071510;
+    --bg-card: #0a1c15;
+    --bg-hover: #0e2419;
+    --bg-active: rgba(0, 255, 136, .08);
+    --bg-input: #071510;
+    --accent: #00ff88;
+    --accent-light: #4ecdc4;
+    --accent-glow: rgba(0, 255, 136, .14);
+    --accent-dim: rgba(0, 255, 136, .45);
+    --text-1: #00ff88;
+    --text-2: #c8f5e0;
+    --text-3: #7fffd4;
+    --text-label: #3d8b6a;
+    --text-muted: rgba(127, 255, 212, .3);
+    --text-value: #e0fff0;
+    --border: rgba(0, 255, 136, .18);
+    --border-h: rgba(0, 255, 136, .55);
+    --success: #00ff88;
+    --warning: #f59e0b;
+    --danger: #ff5555;
+    --cat-header-bg: rgba(0, 255, 136, .06);
+    --cat-header-border: rgba(0, 255, 136, .15);
+    --btn-fg: #050d0a;
+    --toggle-thumb: #3d8b6a;
+}
+
+
+/* ── 2. Pure White — GitHub Light (github.com theme) ──────────── */
+[data-theme="pure-white"] {
+    --bg-root: #ffffff;
+    --bg-sidebar: #f6f8fa;
+    --bg-card: #ffffff;
+    --bg-hover: #eaeef2;
+    --bg-active: rgba(9, 105, 218, .06);
+    --bg-input: #ffffff;
+    --accent: #0969da;
+    /* GitHub blue */
+    --accent-light: #218bff;
+    --accent-glow: rgba(9, 105, 218, .1);
+    --accent-dim: rgba(9, 105, 218, .35);
+    --text-1: #1f2328;
+    --text-2: #24292f;
+    --text-3: #57606a;
+    --text-label: #6e7781;
+    --text-muted: #8c959f;
+    --text-value: #1f2328;
+    --border: #d0d7de;
+    --border-h: #0969da;
+    --success: #1a7f37;
+    --warning: #9a6700;
+    --danger: #d1242f;
+    --cat-header-bg: rgba(9, 105, 218, .04);
+    --cat-header-border: #d0d7de;
+    --btn-fg: #ffffff;
+    --toggle-thumb: #8c959f;
+}
+
+
+/* ── 3. Matte White — Solarized Light ─────────────────────────── */
+[data-theme="matte-white"] {
+    --bg-root: #fdf6e3;
+    /* solarized base3 */
+    --bg-sidebar: #eee8d5;
+    /* solarized base2 */
+    --bg-card: #fdf6e3;
+    --bg-hover: #e5dcc8;
+    --bg-active: rgba(38, 139, 210, .07);
+    --bg-input: #fdf6e3;
+    --accent: #268bd2;
+    /* solarized blue */
+    --accent-light: #2aa198;
+    /* solarized cyan */
+    --accent-glow: rgba(38, 139, 210, .12);
+    --accent-dim: rgba(38, 139, 210, .4);
+    --text-1: #073642;
+    /* solarized base03 */
+    --text-2: #586e75;
+    /* solarized base01 */
+    --text-3: #657b83;
+    /* solarized base00 */
+    --text-label: #839496;
+    /* solarized base0 */
+    --text-muted: #93a1a1;
+    /* solarized base1 */
+    --text-value: #073642;
+    --border: #d3c9b0;
+    --border-h: #268bd2;
+    --success: #859900;
+    /* solarized green */
+    --warning: #b58900;
+    /* solarized yellow */
+    --danger: #dc322f;
+    /* solarized red */
+    --cat-header-bg: rgba(38, 139, 210, .05);
+    --cat-header-border: #d3c9b0;
+    --btn-fg: #fdf6e3;
+    --toggle-thumb: #93a1a1;
+}
+
+
+/* ── 4. Cream — Monokai ───────────────────────────────────────── */
+[data-theme="cream"] {
+    --bg-root: #272822;
+    /* monokai bg */
+    --bg-sidebar: #1e1f1c;
+    --bg-card: #2d2e27;
+    --bg-hover: #3a3b34;
+    --bg-active: rgba(166, 226, 46, .07);
+    --bg-input: #272822;
+    --accent: #a6e22e;
+    /* monokai green */
+    --accent-light: #e6db74;
+    /* monokai yellow */
+    --accent-glow: rgba(166, 226, 46, .12);
+    --accent-dim: rgba(166, 226, 46, .4);
+    --text-1: #f8f8f2;
+    /* monokai fg */
+    --text-2: #cfcfc2;
+    --text-3: #75715e;
+    /* monokai comment */
+    --text-label: #5c5c4d;
+    --text-muted: #414139;
+    --text-value: #f8f8f2;
+    --border: rgba(166, 226, 46, .16);
+    --border-h: rgba(166, 226, 46, .5);
+    --success: #a6e22e;
+    --warning: #fd971f;
+    /* monokai orange */
+    --danger: #f92672;
+    /* monokai pink */
+    --cat-header-bg: rgba(166, 226, 46, .05);
+    --cat-header-border: rgba(166, 226, 46, .14);
+    --btn-fg: #272822;
+    --toggle-thumb: #75715e;
+}
+
+
+/* ── 5. Matte Black — VS Code Default Dark+ ────────────────────── */
+[data-theme="matte-black"] {
+    --bg-root: #1e1e1e;
+    /* vscode editor bg */
+    --bg-sidebar: #252526;
+    /* vscode sidebar bg */
+    --bg-card: #2d2d2d;
+    --bg-hover: #2a2d2e;
+    --bg-active: rgba(0, 122, 204, .1);
+    --bg-input: #3c3c3c;
+    --accent: #007acc;
+    /* vscode blue */
+    --accent-light: #1b9ed8;
+    --accent-glow: rgba(0, 122, 204, .14);
+    --accent-dim: rgba(0, 122, 204, .45);
+    --text-1: #d4d4d4;
+    /* vscode fg */
+    --text-2: #cccccc;
+    --text-3: #808080;
+    --text-label: #6d6d6d;
+    --text-muted: #4e4e4e;
+    --text-value: #d4d4d4;
+    --border: #454545;
+    --border-h: #007acc;
+    --success: #4ec9b0;
+    /* vscode teal */
+    --warning: #dcdcaa;
+    /* vscode yellow */
+    --danger: #f44747;
+    /* vscode red */
+    --cat-header-bg: rgba(0, 122, 204, .06);
+    --cat-header-border: #454545;
+    --btn-fg: #ffffff;
+    --toggle-thumb: #808080;
+}
+
+
+/* ── 6. Black-Brown — Dracula ─────────────────────────────────── */
+[data-theme="black-brown"] {
+    --bg-root: #282a36;
+    /* dracula bg */
+    --bg-sidebar: #21222c;
+    /* dracula darker */
+    --bg-card: #2d2f3f;
+    --bg-hover: #343746;
+    --bg-active: rgba(189, 147, 249, .07);
+    --bg-input: #282a36;
+    --accent: #bd93f9;
+    /* dracula purple */
+    --accent-light: #ff79c6;
+    /* dracula pink */
+    --accent-glow: rgba(189, 147, 249, .13);
+    --accent-dim: rgba(189, 147, 249, .45);
+    --text-1: #f8f8f2;
+    /* dracula fg */
+    --text-2: #cdd6f4;
+    --text-3: #6272a4;
+    /* dracula comment */
+    --text-label: #4d5880;
+    --text-muted: #3a4060;
+    --text-value: #f8f8f2;
+    --border: rgba(189, 147, 249, .18);
+    --border-h: rgba(189, 147, 249, .55);
+    --success: #50fa7b;
+    /* dracula green */
+    --warning: #f1fa8c;
+    /* dracula yellow */
+    --danger: #ff5555;
+    /* dracula red */
+    --cat-header-bg: rgba(189, 147, 249, .05);
+    --cat-header-border: rgba(189, 147, 249, .15);
+    --btn-fg: #282a36;
+    --toggle-thumb: #6272a4;
+}
+
+
+/* ── 7. Jam Black — One Dark Pro ──────────────────────────────── */
+[data-theme="jam-black"] {
+    --bg-root: #282c34;
+    /* one dark bg */
+    --bg-sidebar: #21252b;
+    /* one dark sidebar */
+    --bg-card: #2c313a;
+    --bg-hover: #323842;
+    --bg-active: rgba(97, 175, 239, .07);
+    --bg-input: #282c34;
+    --accent: #61afef;
+    /* one dark blue */
+    --accent-light: #56b6c2;
+    /* one dark cyan */
+    --accent-glow: rgba(97, 175, 239, .12);
+    --accent-dim: rgba(97, 175, 239, .4);
+    --text-1: #abb2bf;
+    /* one dark fg */
+    --text-2: #d0d8e8;
+    --text-3: #5c6370;
+    /* one dark comment */
+    --text-label: #4b5263;
+    --text-muted: #363c49;
+    --text-value: #e5c07b;
+    /* one dark yellow — great for values */
+    --border: rgba(97, 175, 239, .16);
+    --border-h: rgba(97, 175, 239, .5);
+    --success: #98c379;
+    /* one dark green */
+    --warning: #e5c07b;
+    /* one dark yellow */
+    --danger: #e06c75;
+    /* one dark red */
+    --cat-header-bg: rgba(97, 175, 239, .05);
+    --cat-header-border: rgba(97, 175, 239, .14);
+    --btn-fg: #282c34;
+    --toggle-thumb: #5c6370;
+}
+
+
+/* ── 8. Jam Navy — Nord ───────────────────────────────────────── */
+[data-theme="jam-navy"] {
+    --bg-root: #2e3440;
+    /* nord polar night */
+    --bg-sidebar: #242933;
+    --bg-card: #3b4252;
+    /* nord polar night 1 */
+    --bg-hover: #434c5e;
+    /* nord polar night 2 */
+    --bg-active: rgba(136, 192, 208, .07);
+    --bg-input: #2e3440;
+    --accent: #88c0d0;
+    /* nord frost */
+    --accent-light: #81a1c1;
+    /* nord frost 2 */
+    --accent-glow: rgba(136, 192, 208, .12);
+    --accent-dim: rgba(136, 192, 208, .4);
+    --text-1: #eceff4;
+    /* nord snow storm 2 */
+    --text-2: #e5e9f0;
+    /* nord snow storm 1 */
+    --text-3: #d8dee9;
+    /* nord snow storm 0 */
+    --text-label: #7b88a1;
+    --text-muted: #4c566a;
+    /* nord polar night 3 */
+    --text-value: #eceff4;
+    --border: rgba(136, 192, 208, .18);
+    --border-h: rgba(136, 192, 208, .55);
+    --success: #a3be8c;
+    /* nord aurora green */
+    --warning: #ebcb8b;
+    /* nord aurora yellow */
+    --danger: #bf616a;
+    /* nord aurora red */
+    --cat-header-bg: rgba(136, 192, 208, .05);
+    --cat-header-border: rgba(136, 192, 208, .16);
+    --btn-fg: #2e3440;
+    --toggle-thumb: #7b88a1;
+}
+
+
+/* ── 9. Block White — Catppuccin Latte (light) ─────────────────── */
+[data-theme="block-white"] {
+    --bg-root: #eff1f5;
+    /* catppuccin latte base */
+    --bg-sidebar: #1e2030;
+    /* catppuccin macchiato - dark sidebar */
+    --bg-card: #ffffff;
+    --bg-hover: #e6e9ef;
+    /* catppuccin crust */
+    --bg-active: rgba(30, 102, 245, .07);
+    --bg-input: #ffffff;
+    --accent: #1e66f5;
+    /* catppuccin blue */
+    --accent-light: #209fb5;
+    /* catppuccin sapphire */
+    --accent-glow: rgba(30, 102, 245, .1);
+    --accent-dim: rgba(30, 102, 245, .35);
+    --text-1: #4c4f69;
+    /* catppuccin text */
+    --text-2: #5c5f77;
+    /* catppuccin subtext1 */
+    --text-3: #6c6f85;
+    /* catppuccin subtext0 */
+    --text-label: #7c7f93;
+    /* catppuccin overlay2 */
+    --text-muted: #9ca0b0;
+    /* catppuccin overlay0 */
+    --text-value: #4c4f69;
+    --border: #ccd0da;
+    /* catppuccin surface2 */
+    --border-h: #1e66f5;
+    --success: #40a02b;
+    /* catppuccin green */
+    --warning: #df8e1d;
+    /* catppuccin yellow */
+    --danger: #d20f39;
+    /* catppuccin red */
+    --cat-header-bg: rgba(30, 102, 245, .04);
+    --cat-header-border: #ccd0da;
+    --btn-fg: #ffffff;
+    --toggle-thumb: #9ca0b0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   Base Styles
+   ═══════════════════════════════════════════════════════════════ */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg-root);
+    color: var(--text-2);
+    line-height: 1.6;
+    min-height: 100vh;
+    transition: background .25s, color .25s;
+}
+
+input,
+select,
+textarea,
+button {
+    font-family: inherit;
+    font-size: inherit;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-dim);
+}
+
+/* ── Buttons ───────────────────────────────────────────────── */
+.btn-primary {
+    background: var(--accent);
+    color: var(--btn-fg, #fff);
+    font-weight: 600;
+    padding: 8px 18px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: opacity .18s, transform .18s;
+}
+
+.btn-primary:hover {
+    opacity: .85;
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.btn-outline {
+    background: transparent;
+    color: var(--accent);
+    font-weight: 500;
+    padding: 8px 18px;
+    border: 1.5px solid var(--accent);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all .18s;
+}
+
+.btn-outline:hover {
+    background: var(--accent-glow);
+}
+
+.btn-danger {
+    background: transparent;
+    color: var(--danger);
+    font-weight: 500;
+    padding: 6px 14px;
+    border: 1.5px solid var(--danger);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all .18s;
+}
+
+.btn-danger:hover {
+    background: rgba(220, 38, 38, .1);
+}
+
+.btn-icon {
+    background: transparent;
+    color: var(--text-3);
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    transition: all .18s;
+}
+
+.btn-icon:hover {
+    color: var(--accent);
+    background: var(--accent-glow);
+}
+
+.btn-rm {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: .75rem;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: all .18s;
+    flex-shrink: 0;
+}
+
+.btn-rm:hover {
+    color: var(--danger);
+    background: rgba(220, 38, 38, .1);
+}
+
+/* ── Input ─────────────────────────────────────────────────── */
+.input-field {
+    width: 100%;
+    background: var(--bg-input);
+    color: var(--text-value);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    outline: none;
+    transition: all .18s;
+}
+
+.input-field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.input-field::placeholder {
+    color: var(--text-muted);
+}
+
+/* ── Badge ─────────────────────────────────────────────────── */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: .78rem;
+    font-weight: 500;
+}
+
+.badge-idle {
+    background: var(--accent-glow);
+    color: var(--accent);
+}
+
+.badge-running {
+    background: rgba(0, 200, 100, .15);
+    color: var(--success);
+}
+
+.badge-error {
+    background: rgba(239, 68, 68, .12);
+    color: var(--danger);
+}
+
+.badge-paused {
+    background: rgba(245, 158, 11, .12);
+    color: var(--warning);
+}
+
+/* ── Toggle ────────────────────────────────────────────────── */
+.toggle-sm {
+    position: relative;
+    width: 32px;
+    height: 18px;
+    border-radius: 9px;
+    background: var(--bg-hover);
+    border: 1.5px solid var(--border);
+    cursor: pointer;
+    transition: all .2s;
+    flex-shrink: 0;
+}
+
+.toggle-sm::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--toggle-thumb, var(--text-3));
+    transition: all .2s;
+}
+
+.toggle-sm.active {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+.toggle-sm.active::after {
+    transform: translateX(13px);
+    background: var(--btn-fg, #fff);
+}
+
+/* ── Animations ────────────────────────────────────────────── */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-in {
+    animation: fadeIn .18s ease forwards;
+}

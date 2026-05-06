@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitManager</title>
+    <meta name="description" content="Multi-project upstream sync framework.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="/css/theme.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+    <script src="/js/app.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+
+        /* ── Layout ───────────────────────────────────────── */
+        .app-layout { display: flex; height: 100vh; overflow: hidden; }
+
+        /* ── Sidebar ──────────────────────────────────────── */
+        .sidebar {
+            width: 200px; min-width: 200px; background: var(--bg-sidebar);
+            border-right: 1px solid var(--border); display: flex;
+            flex-direction: column; transition: background .25s;
+        }
+        .sidebar-header {
+            display: flex; align-items: center; gap: 6px;
+            padding: 10px 10px 8px; border-bottom: 1px solid var(--border);
+        }
+        .sidebar-header h1 { flex: 1; font-size: .9rem; font-weight: 700; color: var(--text-1); }
+        .btn-add-sm {
+            background: var(--accent); color: var(--bg-root);
+            border: none; font-weight: 700; font-size: .75rem; width: 26px; height: 26px;
+            border-radius: 6px; cursor: pointer; transition: opacity .18s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .btn-add-sm:hover { opacity: .8; }
+
+        .project-list { flex: 1; padding: 4px; overflow-y: auto; }
+        .project-item {
+            display: flex; align-items: center; gap: 6px;
+            padding: 6px 8px; border-radius: 5px; cursor: pointer;
+            transition: all .15s; margin-bottom: 1px; font-size: .84rem;
+        }
+        .project-item:hover { background: var(--bg-hover); }
+        .project-item.active { background: var(--bg-active); border-left: 2px solid var(--accent); }
+        .project-item .name {
+            flex: 1; font-weight: 500; color: var(--text-2);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .project-item.active .name { color: var(--text-1); }
+
+        .sidebar-footer {
+            display: flex; gap: 4px; padding: 6px; border-top: 1px solid var(--border);
+        }
+        .theme-btn {
+            flex: 1; background: var(--bg-hover); border: 1px solid var(--border);
+            color: var(--text-3); font-size: .72rem; padding: 5px 6px;
+            border-radius: 5px; cursor: pointer; transition: all .15s;
+            text-align: center; white-space: nowrap;
+        }
+        .theme-btn:hover { border-color: var(--accent); color: var(--text-1); }
+        .logout-btn {
+            background: transparent; border: 1px solid var(--border);
+            color: var(--text-label); font-size: .72rem; padding: 5px 8px;
+            border-radius: 5px; cursor: pointer; transition: all .15s;
+        }
+        .logout-btn:hover { border-color: var(--danger); color: var(--danger); }
+        .toolbar-icon-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 28px; height: 28px; border-radius: 6px;
+            color: var(--text-3); text-decoration: none;
+            border: 1px solid var(--border);
+            background: transparent; transition: all .18s; flex-shrink: 0;
+        }
+        .toolbar-icon-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-glow); }
+
+        /* ── Block White sidebar override (dark sidebar on light bg) */
+        [data-theme="block-white"] .sidebar { color: #cdd6f4; }
+        [data-theme="block-white"] .sidebar .name { color: #cad3f5; }
+        [data-theme="block-white"] .sidebar h1 { color: #8aadf4; }
+        [data-theme="block-white"] .sidebar .btn-rm { color: #5b6078; }
+        [data-theme="block-white"] .sidebar .badge { color: #6e738d; }
+        [data-theme="block-white"] .sidebar .project-item.active .name { color: #8aadf4; }
+        [data-theme="block-white"] .theme-btn { color: #6e738d; border-color: #363a4f; background: #181926; }
+        [data-theme="block-white"] .theme-btn:hover { color: #cad3f5; border-color: #1e66f5; }
+        [data-theme="block-white"] .logout-btn { color: #6e738d; border-color: #363a4f; }
+        [data-theme="block-white"] .logout-btn:hover { color: #d20f39; border-color: #d20f39; }
+        [data-theme="block-white"] .btn-add-sm { background: #1e66f5; color: #fff; }
+
+        /* ── Main ─────────────────────────────────────────── */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; transition: background .25s; }
+
+        /* ── Toolbar (single header bar) ───────────────────── */
+        .toolbar {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 14px; background: var(--bg-sidebar);
+            border-bottom: 1px solid var(--border); transition: background .25s;
+            flex-wrap: wrap;
+        }
+        .toolbar .spacer { flex: 1; }
+        .toolbar .ti { display: flex; align-items: center; gap: 3px; font-size: .76rem; }
+        .toolbar .tl { color: var(--text-label); font-size: .64rem; text-transform: uppercase; letter-spacing: .3px; }
+        .toolbar .tv { color: var(--text-value); font-family: 'JetBrains Mono', monospace; font-size: .78rem; }
+        .toolbar .sep { width: 1px; height: 18px; background: var(--border); }
+        .toolbar input {
+            background: transparent; border: 1px solid transparent; color: var(--text-value);
+            font-family: 'JetBrains Mono', monospace; font-size: .78rem;
+            padding: 1px 4px; border-radius: 3px; outline: none; width: 60px;
+        }
+        .toolbar input:focus { border-color: var(--accent); }
+        .toolbar input[type=number] { width: 38px; }
+        .toolbar .btn-outline,
+        .toolbar .btn-primary { padding: 4px 10px; font-size: .76rem; }
+        .toolbar .btn-danger { padding: 4px 10px; font-size: .76rem; }
+
+        .content-area { flex: 1; overflow-y: auto; padding: 10px 16px; }
+
+        /* ── Section ──────────────────────────────────────── */
+        .section { margin-bottom: 12px; }
+        .section-title {
+            font-size: .68rem; font-weight: 600; color: var(--text-label);
+            text-transform: uppercase; letter-spacing: .8px;
+            margin-bottom: 5px; display: flex; align-items: center; gap: 6px;
+        }
+        .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+        .section-title .cnt { color: var(--text-muted); }
+
+        /* ── Category Header ──────────────────────────────── */
+        .cat-group { margin-bottom: 6px; }
+        .cat-header {
+            display: flex; align-items: center; gap: 6px;
+            padding: 3px 10px; margin-bottom: 2px;
+            background: var(--cat-header-bg); border: 1px solid var(--cat-header-border);
+            border-radius: 4px; font-size: .72rem; font-weight: 600;
+            color: var(--accent); letter-spacing: .3px;
+        }
+        .cat-header .cat-cnt { color: var(--text-label); font-weight: 400; }
+
+        /* ── Compact Row ──────────────────────────────────── */
+        .entry-row {
+            display: flex; align-items: center; gap: 5px;
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 4px; padding: 4px 8px; margin-bottom: 2px;
+            font-size: .8rem; transition: border-color .15s, background .25s;
+        }
+        .entry-row:hover { border-color: var(--border-h); }
+        .entry-row .fi { display: flex; align-items: center; gap: 3px; flex: 1; min-width: 0; }
+        .entry-row .fl {
+            color: var(--text-label); font-size: .62rem; text-transform: uppercase;
+            letter-spacing: .3px; white-space: nowrap;
+        }
+        .entry-row input {
+            flex: 1; min-width: 0; background: transparent; border: 1px solid transparent;
+            color: var(--text-value); font-size: .8rem; padding: 2px 4px;
+            border-radius: 3px; outline: none; transition: border-color .15s;
+        }
+        .entry-row input:focus { border-color: var(--accent); background: var(--bg-root); }
+        .entry-row input::placeholder { color: var(--text-muted); font-size: .74rem; }
+        .entry-row .sep { width: 1px; height: 16px; background: var(--border); flex-shrink: 0; }
+
+        .commit-row {
+            display: flex; align-items: center; gap: 5px;
+            padding: 1px 8px 1px 24px; font-size: .74rem; margin-bottom: 2px;
+        }
+        .commit-row .fl { color: var(--text-muted); font-size: .62rem; }
+        .commit-row input {
+            flex: 1; background: transparent; border: 1px solid transparent;
+            color: var(--text-3); font-family: 'JetBrains Mono', monospace; font-size: .74rem;
+            padding: 1px 4px; border-radius: 3px; outline: none;
+        }
+        .commit-row input:focus { border-color: var(--accent); }
+
+        /* ── Git Commit Bar ───────────────────────────────── */
+        .git-bar {
+            display: flex; align-items: center; gap: 10px;
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 5px; padding: 6px 10px; font-size: .8rem;
+        }
+        .git-bar .fl { color: var(--text-label); font-size: .64rem; text-transform: uppercase; }
+        .git-bar input {
+            flex: 1; background: transparent; border: 1px solid transparent;
+            color: var(--text-value); font-family: 'JetBrains Mono', monospace;
+            font-size: .8rem; padding: 2px 4px; border-radius: 3px; outline: none;
+        }
+        .git-bar input:focus { border-color: var(--accent); }
+
+        /* ── Empty / Modal / Toast / Login ──────────────────── */
+        .empty-state {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; height: 100%; color: var(--text-muted); gap: 6px;
+        }
+        .empty-state .msg { font-size: .86rem; }
+        .empty-inline { text-align: center; padding: 10px; color: var(--text-muted); font-size: .76rem; font-style: italic; }
+
+        .modal-backdrop {
+            position: fixed; inset: 0; background: rgba(0,0,0,.6);
+            display: flex; align-items: center; justify-content: center; z-index: 100;
+        }
+        .modal {
+            background: var(--bg-sidebar); border: 1px solid var(--border);
+            border-radius: 10px; padding: 20px; width: 340px;
+            box-shadow: 0 0 20px var(--accent-glow); animation: fadeIn .12s ease forwards;
+        }
+        .modal h2 { font-size: .95rem; font-weight: 600; color: var(--text-1); margin-bottom: 12px; }
+        .modal .fg { margin-bottom: 10px; }
+        .modal .fl { font-size: .68rem; font-weight: 500; color: var(--text-label); text-transform: uppercase; margin-bottom: 3px; }
+        .modal-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 14px; }
+
+        .toast {
+            position: fixed; bottom: 16px; right: 16px;
+            background: var(--accent); color: var(--bg-root);
+            padding: 6px 16px; border-radius: 5px; font-weight: 600;
+            font-size: .8rem; z-index: 200; animation: fadeIn .12s ease forwards;
+        }
+
+        /* ── Login Page ────────────────────────────────────── */
+        .login-page {
+            display: flex; align-items: center; justify-content: center;
+            height: 100vh; background: var(--bg-root); transition: background .25s;
+        }
+        .login-box {
+            background: var(--bg-sidebar); border: 1px solid var(--border);
+            border-radius: 12px; padding: 28px 32px; width: 320px;
+            box-shadow: 0 0 30px var(--accent-glow);
+        }
+        .login-box h1 { font-size: 1.1rem; font-weight: 700; color: var(--text-1); margin-bottom: 4px; }
+        .login-box .sub { font-size: .78rem; color: var(--text-label); margin-bottom: 18px; }
+        .login-box .fg { margin-bottom: 12px; }
+        .login-box .fl { font-size: .68rem; color: var(--text-label); text-transform: uppercase; margin-bottom: 3px; }
+        .login-box .err { font-size: .78rem; color: var(--danger); margin-bottom: 8px; }
+        .login-box .btn-primary { width: 100%; padding: 9px; margin-top: 4px; }
+
+        /* ── Loading Overlay ───────────────────────────────── */
+        .loading-overlay {
+            position: fixed; inset: 0; background: var(--bg-root);
+            display: flex; align-items: center; justify-content: center; z-index: 999;
+            transition: background .25s;
+        }
+        .loading-spinner {
+            width: 28px; height: 28px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body x-data="gitmanager">
+
+    <!-- ═══ LOADING OVERLAY ══════════════════════════════════ -->
+    <div class="loading-overlay" x-show="!authReady" x-cloak>
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- ═══ LOGIN ═════════════════════════════════════════════ -->
+    <div class="login-page" x-show="authReady && !authenticated" x-cloak>
+        <div class="login-box">
+            <h1>🔧 GitManager</h1>
+            <div class="sub">Sign in to continue</div>
+            <div class="err" x-show="loginError" x-text="loginError"></div>
+            <div class="fg">
+                <div class="fl">Username</div>
+                <input class="input-field" x-model="loginUsername" placeholder="admin"
+                       @keydown.enter="$refs.passInput.focus()" style="padding:8px 10px;">
+            </div>
+            <div class="fg">
+                <div class="fl">Password</div>
+                <input class="input-field" type="password" x-model="loginPassword"
+                       x-ref="passInput" placeholder="••••••" @keydown.enter="login()" style="padding:8px 10px;">
+            </div>
+            <button class="btn-primary" @click="login()">Sign In</button>
+        </div>
+    </div>
+
+    <!-- ═══ APP ═══════════════════════════════════════════════ -->
+    <div class="app-layout" x-show="authReady && authenticated" x-cloak>
+
+        <!-- ── Sidebar ────────────────────────────────────── -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>GitManager</h1>
+                <button class="btn-add-sm" @click="showAddProject = true" title="Add Project">+</button>
+            </div>
+            <div class="project-list">
+                <template x-for="p in projects" :key="p.id">
+                    <div class="project-item" :class="{ active: activeProjectId === p.id }"
+                         @click="selectProject(p.id)">
+                        <span class="badge" :class="statusBadge(p.status)"
+                              x-text="statusIcon(p.status)" style="font-size:.6rem;padding:1px 4px;"></span>
+                        <span class="name" x-text="p.name"></span>
+                        <button class="btn-rm" @click.stop="deleteProject(p.id)">✕</button>
+                    </div>
+                </template>
+                <div x-show="projects.length === 0 && !loading" class="empty-inline">No projects</div>
+            </div>
+            <div class="sidebar-footer">
+                <button class="theme-btn" @click="cycleTheme()" x-text="currentThemeName"></button>
+                <button class="logout-btn" @click="logout()">Exit</button>
+            </div>
+        </aside>
+
+        <!-- ── Main ───────────────────────────────────────── -->
+        <main class="main-content">
+            <div x-show="!activeProject" class="empty-state">
+                <div class="msg" style="color:var(--text-muted);">Select or create a project</div>
+            </div>
+
+            <template x-if="activeProject">
+                <div style="display:flex;flex-direction:column;height:100%;">
+
+                    <!-- Toolbar -->
+                    <div class="toolbar">
+                        <div class="ti">
+                            <span class="tl">Path</span>
+                            <span class="tv" x-text="maskPath(activeProject.path)"></span>
+                        </div>
+                        <div class="sep"></div>
+                        <div class="ti">
+                            <span class="badge" :class="statusBadge(activeProject.status)"
+                                  x-text="activeProject.status" style="font-size:.65rem;padding:1px 6px;"></span>
+                        </div>
+                        <div class="sep"></div>
+                        <div class="ti">
+                            <span class="tl">Branch</span>
+                            <input x-model="activeProject.git.branch" placeholder="main">
+                        </div>
+                        <div class="ti">
+                            <span class="tl">Interval</span>
+                            <input type="number" x-model.number="activeProject.schedule.interval_minutes">
+                            <span style="color:var(--text-muted);font-size:.64rem;">m</span>
+                        </div>
+                        <div class="ti">
+                            <span class="tl">Push</span>
+                            <div class="toggle-sm" :class="{ active: activeProject.git.auto_push }"
+                                 @click="activeProject.git.auto_push = !activeProject.git.auto_push"></div>
+                        </div>
+                        <a href="https://github.com/mdnaimul22/GitManager" target="_blank" rel="noopener"
+                           class="toolbar-icon-btn" title="GitHub Repository">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.1 3.29 9.42 7.86 10.95.57.1.78-.25.78-.55v-1.92c-3.19.69-3.87-1.54-3.87-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.75 1.18 1.75 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.72-1.53-2.55-.29-5.23-1.27-5.23-5.67 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.45.11-3.03 0 0 .96-.31 3.14 1.17A10.9 10.9 0 0 1 12 6.84c.97 0 1.95.13 2.86.38 2.18-1.48 3.14-1.17 3.14-1.17.62 1.58.23 2.74.11 3.03.74.8 1.18 1.82 1.18 3.07 0 4.41-2.69 5.38-5.25 5.66.41.35.78 1.05.78 2.12v3.14c0 .3.2.66.79.55C20.22 21.41 23.5 17.1 23.5 12 23.5 5.65 18.35.5 12 .5z"/>
+                            </svg>
+                        </a>
+                        <a href="/docs.html" target="_blank" rel="noopener"
+                           class="toolbar-icon-btn" title="Documentation">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10 9 9 9 8 9"/>
+                            </svg>
+                        </a>
+                        <div class="spacer"></div>
+                        <button class="btn-outline" @click="addUpstream()">+ Upstream</button>
+                        <button class="btn-outline" @click="addForward()">+ Forward</button>
+                        <button class="btn-primary" @click="saveProject()">Save</button>
+                        <button class="btn-primary" style="background:var(--accent-light);"
+                                @click="runProject(activeProjectId)"
+                                x-show="activeProject.status !== 'running'">Run</button>
+                        <button class="btn-danger"
+                                @click="stopProject(activeProjectId)"
+                                x-show="activeProject.status === 'running'">Stop</button>
+                    </div>
+
+                    <div class="content-area">
+
+                        <!-- Upstreams -->
+                        <div class="section">
+                            <div class="section-title">Upstreams <span class="cnt" x-text="'(' + activeProject.upstreams.length + ')'"></span></div>
+                            <template x-for="(u, i) in activeProject.upstreams" :key="i">
+                                <div>
+                                    <div class="entry-row">
+                                        <div class="fi"><span class="fl">Name</span>
+                                            <input x-model="u.name" placeholder="upstream-name"></div>
+                                        <div class="sep"></div>
+                                        <div class="fi" style="flex:1.5;"><span class="fl">URL</span>
+                                            <input x-model="u.url" placeholder="https://github.com/user/repo.git"></div>
+                                        <div class="sep"></div>
+                                        <div class="fi" style="flex:0.6;"><span class="fl">Branch</span>
+                                            <input x-model="u.branch" placeholder="main"></div>
+                                        <div class="sep"></div>
+                                        <div class="fi"><span class="fl">Path</span>
+                                            <input x-model="u.path" placeholder="{REPO_ROOT}/.dir"></div>
+                                        <div class="sep"></div>
+                                        <div class="toggle-sm" :class="{ active: u.pull }"
+                                             @click="u.pull = !u.pull" title="Pull"></div>
+                                        <button class="btn-rm" @click="removeUpstream(i)">✕</button>
+                                    </div>
+                                    <div class="commit-row">
+                                        <span class="fl">commit</span>
+                                        <input x-model="activeProject.git.commit_messages.upstreams[u.name || 'default']"
+                                               placeholder="sync: auto-update from {upstream_name} [{datetime}]">
+                                    </div>
+                                </div>
+                            </template>
+                            <div x-show="activeProject.upstreams.length === 0" class="empty-inline">No upstreams</div>
+                        </div>
+
+                        <!-- Grouped Forwards -->
+                        <div class="section">
+                            <div class="section-title">Path Forwards <span class="cnt" x-text="'(' + activeProject.forwards.length + ')'"></span></div>
+                            <template x-for="catName in Object.keys(groupedForwards)" :key="catName">
+                                <div class="cat-group">
+                                    <div class="cat-header">
+                                        <span x-text="catName"></span>
+                                        <span class="cat-cnt" x-text="'(' + groupedForwards[catName].length + ')'"></span>
+                                    </div>
+                                    <template x-for="f in groupedForwards[catName]" :key="f._idx">
+                                        <div class="entry-row">
+                                            <div class="fi" style="flex:1.2;"><span class="fl">From</span>
+                                                <input x-model="activeProject.forwards[f._idx].from"
+                                                       style="font-family:'JetBrains Mono',monospace;font-size:.76rem;"
+                                                       placeholder="source"></div>
+                                            <span style="color:var(--accent);font-size:.76rem;flex-shrink:0;">→</span>
+                                            <div class="fi" style="flex:1.2;"><span class="fl">To</span>
+                                                <input x-model="activeProject.forwards[f._idx].to"
+                                                       style="font-family:'JetBrains Mono',monospace;font-size:.76rem;"
+                                                       placeholder="dest"></div>
+                                            <div class="sep"></div>
+                                            <div class="toggle-sm" :class="{ active: activeProject.forwards[f._idx].enabled }"
+                                                 @click="activeProject.forwards[f._idx].enabled = !activeProject.forwards[f._idx].enabled"></div>
+                                            <button class="btn-rm" @click="removeForward(f._idx)">✕</button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                            <div x-show="activeProject.forwards.length === 0" class="empty-inline">No forwards</div>
+                        </div>
+
+                        <!-- Commit Template -->
+                        <div class="section">
+                            <div class="section-title">Manual Commit Template</div>
+                            <div class="git-bar">
+                                <span class="fl">Msg</span>
+                                <input x-model="activeProject.git.commit_messages.manual"
+                                       placeholder="chore: manual update of {count} file(s) [{datetime}]">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </main>
+    </div>
+
+    <!-- ═══ Add Project Modal ═════════════════════════════════ -->
+    <div class="modal-backdrop" x-show="showAddProject" x-transition.opacity @click.self="showAddProject = false">
+        <div class="modal" @click.stop>
+            <h2>New Project</h2>
+            <div class="fg">
+                <div class="fl">Project Name</div>
+                <input class="input-field" x-model="newProject.name" placeholder="my-dotfiles"
+                       @keydown.enter="addProject()" style="padding:7px 10px;">
+            </div>
+            <div class="fg">
+                <div class="fl">Project Path</div>
+                <input class="input-field" x-model="newProject.path" placeholder="/home/user/my-project"
+                       @keydown.enter="addProject()" style="padding:7px 10px;">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-outline" @click="showAddProject = false" style="padding:5px 12px;font-size:.82rem;">Cancel</button>
+                <button class="btn-primary" @click="addProject()" style="padding:5px 12px;font-size:.82rem;">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" x-show="toastVisible" x-transition.opacity x-text="toastMessage"></div>
+</body>
+</html>

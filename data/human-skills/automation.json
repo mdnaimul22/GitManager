@@ -1,0 +1,23 @@
+{
+  "schedule": {
+    "run_at": null,
+    "interval_minutes": 10,
+    "poll_interval_seconds": 60
+  },
+  "git": {
+    "auto_push": true,
+    "branch": "main",
+    "commit_messages": {
+      "manual": "chore: manual update of {count} file(s) [{datetime}]",
+      "upstreams": {
+        "default": "sync: auto-update from {upstream_name} [{datetime}]",
+        "claude-skills": "sync: auto-update from {upstream_name} [{datetime}]",
+        "everything-claude-code": "sync: auto-update from {upstream_name} [{datetime}]",
+        "superpowers": "sync: auto-update from {upstream_name} [{datetime}]",
+        "ui-ux-pro-max-skill": "sync: auto-update from {upstream_name} [{datetime}]",
+        "chart-visualization-skills": "sync: auto-update from {upstream_name} [{datetime}]",
+        "anthropics-skills": "sync: auto-update from {upstream_name} [{datetime}]"
+      }
+    }
+  }
+}

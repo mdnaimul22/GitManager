@@ -1,0 +1,16 @@
+{
+  "upstreams": [
+    {
+      "name": "human-skills",
+      "path": "{REPO_ROOT}/.human-skills",
+      "url": "https://github.com/naimul/human-skills.git",
+      "pull": true
+    },
+    {
+      "name": "claude-skills",
+      "path": "{REPO_ROOT}/.claude-skills",
+      "url": "https://github.com/naimul/claude-skills.git",
+      "pull": true
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "upstreams": [
+    {
+      "name": "claude-skills",
+      "path": "/home/naimul/human-skills/.claude-skills",
+      "url": "https://github.com/alirezarezvani/claude-skills.git",
+      "branch": "main",
+      "pull": true
+    },
+    {
+      "name": "everything-claude-code",
+      "path": "/home/naimul/human-skills/.everything-claude-code",
+      "url": "https://github.com/affaan-m/everything-claude-code.git",
+      "branch": "main",
+      "pull": true
+    },
+    {
+      "name": "superpowers",
+      "path": "/home/naimul/human-skills/.superpowers",
+      "url": "https://github.com/obra/superpowers.git",
+      "branch": "main",
+      "pull": true
+    },
+    {
+      "name": "ui-ux-pro-max-skill",
+      "path": "/home/naimul/human-skills/.ui-ux-pro-max-skill",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git",
+      "branch": "main",
+      "pull": true
+    },
+    {
+      "name": "chart-visualization-skills",
+      "path": "/home/naimul/human-skills/.chart-visualization-skills",
+      "url": "https://github.com/mdnaimul22/chart-visualization-skills.git",
+      "branch": "master",
+      "pull": true
+    },
+    {
+      "name": "anthropics-skills",
+      "path": "/home/naimul/human-skills/.anthropics-skills",
+      "url": "https://github.com/anthropics/skills.git",
+      "branch": "main",
+      "pull": true
+    }
+  ]
+}

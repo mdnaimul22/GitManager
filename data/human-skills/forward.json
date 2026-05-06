@@ -1,0 +1,209 @@
+{
+  "forwards": [
+    {
+      "from": "/home/naimul/human-skills/.anthropics-skills/skills/docx",
+      "to": "/home/naimul/human-skills/skills/docx",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.anthropics-skills/skills/pdf",
+      "to": "/home/naimul/human-skills/skills/pdf",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.anthropics-skills/skills/pptx",
+      "to": "/home/naimul/human-skills/skills/pptx",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.anthropics-skills/skills/xlsx",
+      "to": "/home/naimul/human-skills/skills/xlsx",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.anthropics-skills/skills/mcp-builder",
+      "to": "/home/naimul/human-skills/skills/mcp-builder",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.everything-claude-code/skills/pytorch-patterns",
+      "to": "/home/naimul/human-skills/skills/pytorch-patterns",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.everything-claude-code/skills/python-patterns",
+      "to": "/home/naimul/human-skills/skills/python-patterns",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.everything-claude-code/skills/python-testing",
+      "to": "/home/naimul/human-skills/skills/python-testing",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.ui-ux-pro-max-skill/.claude/skills/ui-ux-pro-max",
+      "to": "/home/naimul/human-skills/skills/ui-ux-pro-max",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.ui-ux-pro-max-skill/README.md",
+      "to": "/home/naimul/human-skills/skills/ui-ux-pro-max",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering-team/skills/epic-design",
+      "to": "/home/naimul/human-skills/skills/epic-design",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering-team/skills/senior-architect",
+      "to": "/home/naimul/human-skills/skills/senior-architect",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering-team/skills/senior-backend",
+      "to": "/home/naimul/human-skills/skills/senior-backend",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering-team/skills/senior-data-engineer",
+      "to": "/home/naimul/human-skills/skills/senior-data-engineer",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering-team/skills/senior-data-scientist",
+      "to": "/home/naimul/human-skills/skills/senior-data-scientist",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering-team/skills/senior-devops",
+      "to": "/home/naimul/human-skills/skills/senior-devops",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering-team/skills/senior-frontend",
+      "to": "/home/naimul/human-skills/skills/senior-frontend",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering-team/skills/senior-fullstack",
+      "to": "/home/naimul/human-skills/skills/senior-fullstack",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering-team/skills/senior-ml-engineer",
+      "to": "/home/naimul/human-skills/skills/senior-ml-engineer",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering-team/skills/senior-qa",
+      "to": "/home/naimul/human-skills/skills/senior-qa",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering-team/skills/senior-secops",
+      "to": "/home/naimul/human-skills/skills/senior-secops",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering-team/skills/senior-security",
+      "to": "/home/naimul/human-skills/skills/senior-security",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering-team/skills/tdd-guide",
+      "to": "/home/naimul/human-skills/skills/tdd-guide",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering/skills/api-design-reviewer",
+      "to": "/home/naimul/human-skills/skills/api-design-reviewer",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering/skills/api-test-suite-builder",
+      "to": "/home/naimul/human-skills/skills/api-test-suite-builder",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering/skills/ci-cd-pipeline-builder",
+      "to": "/home/naimul/human-skills/skills/ci-cd-pipeline-builder",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering/skills/database-designer",
+      "to": "/home/naimul/human-skills/skills/database-designer",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering/skills/database-schema-designer",
+      "to": "/home/naimul/human-skills/skills/database-schema-designer",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering/skills/git-worktree-manager",
+      "to": "/home/naimul/human-skills/skills/git-worktree-manager",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering/skills/pr-review-expert",
+      "to": "/home/naimul/human-skills/skills/pr-review-expert",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering/skills/release-manager",
+      "to": "/home/naimul/human-skills/skills/release-manager",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/engineering/skills/sql-database-assistant",
+      "to": "/home/naimul/human-skills/skills/sql-database-assistant",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/marketing-skill/skills/schema-markup",
+      "to": "/home/naimul/human-skills/skills/schema-markup",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/marketing-skill/skills/seo-audit",
+      "to": "/home/naimul/human-skills/skills/seo-audit",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.claude-skills/marketing-skill/skills/site-architecture",
+      "to": "/home/naimul/human-skills/skills/site-architecture",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.chart-visualization-skills/skills/antv-g2-chart",
+      "to": "/home/naimul/human-skills/skills/antv-g2-chart-expert",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.chart-visualization-skills/skills/antv-s2-expert",
+      "to": "/home/naimul/human-skills/skills/antv-s2-pivot-table-expert",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.chart-visualization-skills/skills/chart-visualization",
+      "to": "/home/naimul/human-skills/skills/antv-chart-image-generator",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.chart-visualization-skills/skills/icon-retrieval",
+      "to": "/home/naimul/human-skills/skills/antv-svg-icon-searcher",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.chart-visualization-skills/skills/infographic-creator",
+      "to": "/home/naimul/human-skills/skills/antv-infographic-generator",
+      "enabled": true
+    },
+    {
+      "from": "/home/naimul/human-skills/.chart-visualization-skills/skills/narrative-text-visualization",
+      "to": "/home/naimul/human-skills/skills/antv-t8-narrative-generator",
+      "enabled": true
+    }
+  ]
+}
