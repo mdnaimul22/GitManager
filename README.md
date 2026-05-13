@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🔧 GitManager
+# GitManager
 
 ### Multi-Project Upstream Sync Framework — Web Dashboard
 
