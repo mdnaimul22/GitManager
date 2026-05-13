@@ -20,7 +20,7 @@
 
 ---
 
-## 🚀 What Is GitManager?
+## 🚀 What Is GitManager
 
 GitManager solves the "commit push" problem. If you maintain multiple projects that share code, skills, configs, or any files from external upstream repositories, GitManager automates the entire pipeline:
 
