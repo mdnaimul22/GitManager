@@ -7,8 +7,6 @@
 [![Python](https://img.shields.io/badge/Python-3.10+-3776ab?style=flat-square&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-39%20Passed-brightgreen?style=flat-square&logo=pytest)](tests/)
-[![Themes](https://img.shields.io/badge/Themes-9-blueviolet?style=flat-square)](static/css/theme.css)
 
 **Automating Git synchronization — pull from multiple upstreams, forward selected paths, auto-commit and push, all on a schedule.**
 
