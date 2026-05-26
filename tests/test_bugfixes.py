@@ -417,3 +417,37 @@ class TestOrphanCleanup:
         removed = cleanup_orphans({str(orphan)}, set())
         assert "old-skill" in removed
 
+    def test_disk_scan_finds_ghost_not_in_memory(self, tmp_path):
+        """Ghost skill on disk but NOT in previous_managed must be detected.
+
+        This is the root cause of the persistent ghost skill bug:
+        a skill committed to git before forward rule removal won't be in
+        previous_managed, so memory-only diff misses it.
+        """
+        from src.services.forward import cleanup_orphans
+
+        skills_dir = tmp_path / "skills"
+        skills_dir.mkdir()
+
+        # Skill A is active (in current_managed)
+        skill_a = skills_dir / "skill-a"
+        skill_a.mkdir()
+        (skill_a / "SKILL.md").write_text("active")
+
+        # Skill B is a ghost — on disk but NOT in any managed set
+        ghost = skills_dir / "ghost-skill"
+        ghost.mkdir()
+        (ghost / "SKILL.md").write_text("ghost")
+
+        # Only skill-a is current; ghost is NOT in previous_managed either
+        current = {str(skill_a)}
+        previous = {str(skill_a)}  # ghost never recorded
+
+        removed = cleanup_orphans(previous, current)
+        assert "ghost-skill" in removed, (
+            "Disk scan must detect ghost-skill even though it wasn't in previous_managed"
+        )
+        assert not ghost.exists(), "Ghost must be deleted from disk"
+        assert skill_a.exists(), "Active skill must NOT be deleted"
+
+
