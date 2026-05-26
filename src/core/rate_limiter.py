@@ -32,6 +32,14 @@ SCANNER_PATTERNS: set[str] = {
     "web.config", "server-status",
 }
 
+# IPs that should never be rate-limited or banned
+WHITELISTED_IPS: set[str] = {"127.0.0.1", "::1", "localhost"}
+
+
+def _is_whitelisted(ip: str) -> bool:
+    """Check if IP is local/whitelisted."""
+    return ip in WHITELISTED_IPS or ip.startswith("192.168.") or ip.startswith("10.")
+
 
 def _is_scanner_path(path: str) -> bool:
     """Check if the request path matches known scanner patterns."""
@@ -74,7 +82,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._lock = threading.Lock()
 
     def _get_client_ip(self, request: Request) -> str:
-        """Extract client IP, respecting X-Forwarded-For for reverse proxies."""
+        """Extract real client IP from proxy headers."""
+        # X-Real-IP (nginx default)
+        real_ip = request.headers.get("x-real-ip")
+        if real_ip:
+            return real_ip.strip()
+        # X-Forwarded-For (standard proxy header)
         forwarded = request.headers.get("x-forwarded-for")
         if forwarded:
             return forwarded.split(",")[0].strip()
@@ -108,6 +121,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         now = time.time()
         ip = self._get_client_ip(request)
         path = request.url.path
+
+        # Skip rate limiting for whitelisted IPs (localhost, private network)
+        if _is_whitelisted(ip):
+            return await call_next(request)
 
         with self._lock:
             # Periodic cleanup (every ~100 requests)
