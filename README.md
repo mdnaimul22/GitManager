@@ -2,15 +2,16 @@
 
 # GitManager
 
-### Multi-Project Upstream Sync Framework
+### Compose AI Agents from Distributed Repos — Automatically
 
 [![Python](https://img.shields.io/badge/Python-3.10+-3776ab?style=flat-square&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Tests](https://img.shields.io/badge/Tests-67_passed-brightgreen?style=flat-square&logo=pytest&logoColor=white)](#-testing)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
-**Automating Git synchronization — pull from multiple upstreams, forward selected paths, auto-commit and push, all on a schedule.**
+**Cherry-pick files and folders from multiple GitHub repos. Auto-sync upstream changes. Compose unified projects — zero manual effort.**
 
-[Features](#-features) · [Quick Start](#-quick-start) · [How It Works](#-how-it-works) · [API](#-api-reference) · [Docs](docs/USAGE.md)
+[The Problem](#-the-problem) · [How It Works](#-how-it-works) · [Use Cases](#-use-cases) · [Quick Start](#-quick-start) · [API](#-api-reference)
 
 ---
 
@@ -20,19 +21,94 @@
 
 ---
 
-## 🚀 What Is GitManager
+## 🎯 The Problem
 
-GitManager solves the "commit push" problem. If you maintain multiple projects that share code, skills, configs, or any files from external upstream repositories, GitManager automates the entire pipeline:
+You're building an AI agent. The best skills, tools, and reference docs are scattered across **6 different GitHub repos** from different authors. You need specific folders from each — not the whole repo.
+
+**Without GitManager:**
+```
+1. git clone repo-A            ← manual
+2. cp repo-A/skills/pytorch    ← manual
+3. git clone repo-B            ← manual
+4. cp repo-B/skills/security   ← manual
+5. Repeat for 6 repos...       ← tedious
+6. repo-A updates pytorch skill ← you never know
+7. Your agent uses stale code   ← broken
+```
+
+**With GitManager:**
+```
+Configure once → Auto-pull 6 repos → Cherry-pick 35 paths → Auto-commit & push → Repeat on schedule
+```
+
+Upstream fixes a bug? **Your project inherits it automatically.** You remove a skill? **GitManager deletes it from your repo and git history.** All from a dashboard. No terminal needed.
+
+---
+
+## ⚙️ How It Works
+
+```mermaid
+flowchart LR
+    subgraph Upstreams["Upstream Repos (GitHub)"]
+        A["claude-skills"]
+        B["chart-viz-skills"]
+        C["engineering-skills"]
+    end
+
+    subgraph GM["GitManager"]
+        Pull["① git pull"]
+        Forward["② Cherry-pick paths"]
+        Cleanup["③ Orphan cleanup"]
+        Push["④ git commit + push"]
+    end
+
+    subgraph Target["Your Project"]
+        Skills["skills/"]
+        Config["configs/"]
+    end
+
+    A & B & C --> Pull --> Forward --> Cleanup --> Push --> Skills & Config
+```
+
+| Step | What Happens |
+|---|---|
+| **① Pull** | Clones or pulls latest from each upstream repo |
+| **② Forward** | Copies only the folders/files you selected — not the whole repo |
+| **③ Cleanup** | Removes orphaned paths when you delete a forwarding rule (including `git rm`) |
+| **④ Push** | Auto-commits with smart messages and pushes to your repo |
+
+All steps run on a configurable schedule (e.g., every 10 minutes) in background worker threads.
+
+---
+
+## 💡 Use Cases
+
+### 🤖 AI Agent Composition *(primary use case)*
+
+Aggregate skills from multiple AI skill repositories into a single unified agent:
 
 ```
-Upstream Repo A (GitHub)
-Upstream Repo B (GitHub)     →  git pull  →  Forward selected paths  →  git commit + push
-Upstream Repo C (GitHub)                      to your project dirs       to your repo
+alirezarezvani/claude-skills  →  skills/python-patterns
+                                  skills/pytorch-patterns
+                                  skills/security
+
+anthropics/skills             →  skills/pdf
+                                  skills/docx
+
+your-own/custom-skills        →  skills/my-custom-tool
 ```
 
-No more manually pulling repos, copying folders, and committing changes. GitManager does it all — on a schedule, in the background, with a beautiful dashboard to control everything.
+**Result:** One repo powers your AI agent with the best skills from across the ecosystem — always up to date.
 
-No cloud. No account required. Runs entirely on your machine.
+### 📦 Other Use Cases
+
+| Use Case | How |
+|---|---|
+| **Shared Config Sync** | Pull ESLint, Prettier, Dockerfile configs from a central standards repo into all your projects |
+| **Documentation Aggregation** | Collect `/docs/` from multiple microservice repos into a single documentation site |
+| **Design System Distribution** | Sync UI components from a design system repo to multiple product repos |
+| **Open Source Curation** | Cherry-pick utilities from open source projects without forking entire repos |
+| **Multi-Vendor Integration** | Pull deliverables from vendor repos into your main project — auto-sync on updates |
 
 ---
 
@@ -40,42 +116,27 @@ No cloud. No account required. Runs entirely on your machine.
 
 | Feature | Description |
 |---|---|
-| 🗂️ **Multi-Project** | Manage unlimited projects, each with its own upstreams, paths, and schedule |
-| 🔄 **Upstream Pull** | Auto-pull or clone upstream repos by name, URL, and branch |
-| 📁 **Path Forwarding** | Select which folders/files to copy from each upstream into your project |
-| ⏰ **Scheduler** | Per-project interval (minutes) with background worker threads |
-| 🔒 **Secure Auth** | HMAC-signed stateless session cookies — survives server restarts |
-| 🎨 **9 Themes** | VS Code-inspired themes (Dark+, Dracula, Nord, One Dark, Catppuccin, and more) |
-| 🧪 **39 Tests** | Full pytest coverage for auth, CRUD, and worker control |
+| 🗂️ **Multi-Project** | Manage unlimited projects, each with its own upstreams, forwards, and schedule |
+| 🔄 **Live Upstream Sync** | Auto-pull or clone upstream repos — always track the latest changes |
+| 📁 **Selective Path Forwarding** | Cherry-pick specific folders/files — not the whole repo |
+| 🧹 **Orphan Cleanup** | Remove a forward rule → files are deleted from disk AND git index |
+| ⏰ **Background Scheduler** | Per-project sync interval with hot-reload — config changes apply instantly |
+| 📊 **Smart Commits** | Auto-generated commit messages grouped by upstream source |
 
----
-
-## 📋 Requirements
-
-- **Python** 3.10+
-- **Git** installed and in PATH
-- **Internet access** for upstream pulls (or local paths)
 
 ---
 
 ## ⚡ Quick Start
 
-### 1. Clone the repository
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/mdnaimul22/GitManager.git
 cd GitManager
-```
-
-### 2. Install dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
-### 3. Configure credentials
-
-Copy `.env.example` to `.env` and set your login:
+### 2. Configure credentials
 
 ```bash
 cp .env.example .env
@@ -84,110 +145,95 @@ cp .env.example .env
 ```dotenv
 GM_USERNAME=admin
 GM_PASSWORD=your_secure_password
-GM_SECRET_KEY=any_long_random_string_here
+GM_SECRET_KEY=any_long_random_string
 ```
 
-### 4. Run the server
+### 3. Run
 
 ```bash
 python main.py
 ```
 
-### 5. Open the dashboard
-
-```
-http://localhost:8000
-```
-
-That's it. 🎉
+Open **http://localhost:8000** — that's it. 🎉
 
 ---
 
-## 🔍 How It Works
+## 🔍 Step-by-Step Guide
 
-### Step 1 — Create a Project
+### 1. Create a Project
 
 Click **+** in the sidebar. Give it a name and the absolute path to your local Git repository.
 
-### Step 2 — Add Upstreams
+### 2. Add Upstreams
 
-For each upstream source, define:
-- **Name** — a label (e.g. `claude-skills`)
-- **URL** — the GitHub clone URL (optional if already cloned locally)
+For each source repository, define:
+- **Name** — a label (e.g., `claude-skills`)
+- **URL** — the GitHub clone URL
 - **Branch** — which branch to track (default: `main`)
-- **Path** — where to clone it on your machine
+- **Path** — where to clone it locally
 
-GitManager will auto-clone on first run if the path doesn't exist.
+GitManager auto-clones on first run if the path doesn't exist.
 
-### Step 3 — Define Path Forwards
+### 3. Define Path Forwards
 
-For each upstream, specify which directories or files to copy into your project:
+Select exactly which paths to copy from each upstream:
 
 ```
-FROM: /home/user/.claude-skills/skills/python-patterns
-  TO: /home/user/my-project/skills/python-patterns
+FROM: ~/.claude-skills/skills/python-patterns
+  TO: ~/my-project/skills/python-patterns
 ```
 
 Toggle individual forwards on/off without deleting them.
 
-### Step 4 — Set the Schedule
+### 4. Run
 
-Set the sync interval in minutes in the toolbar. Click **Run** to start the background worker — it will pull upstreams, forward paths, commit changes, and push automatically.
+Set the sync interval and click **Run**. The background worker handles everything automatically.
 
 ---
 
-## 📁 Project Structure
+## 📁 Architecture
 
 ```
 GitManager/
-├── main.py                  # Entry point — FastAPI server + port-kill on startup
-├── requirements.txt
-├── .env.example
+├── main.py                  # FastAPI server + graceful shutdown
 ├── src/
 │   ├── config/              # Settings, paths, file utilities
-│   ├── schema/              # Pydantic data models (single source of truth)
+│   ├── schema/              # Pydantic models (single source of truth)
 │   ├── core/
-│   │   ├── watcher.py       # Hot-reload config watcher
+│   │   ├── watcher.py       # Hot-reload config watcher (mtime-based)
 │   │   ├── pool.py          # Background worker pool (per-project threads)
+│   │   ├── rate_limiter.py  # Rate limiting + scanner auto-ban
 │   │   └── resolver.py      # {REPO_ROOT} placeholder resolver
 │   ├── providers/
 │   │   └── git.py           # Low-level git command wrapper
 │   ├── services/
-│   │   ├── project.py       # Project CRUD with threading.Lock
+│   │   ├── project.py       # Project CRUD (thread-safe)
 │   │   ├── upstream.py      # Pull / clone upstream repos
-│   │   ├── forward.py       # Path forwarding (copy files)
+│   │   ├── forward.py       # Selective copy + orphan cleanup + git rm
+│   │   ├── commit.py        # Smart commit message generation
 │   │   └── sync.py          # Full sync orchestrator
 │   └── routers/
-│       ├── auth.py          # Login / logout / session check
-│       └── projects.py      # Projects CRUD + worker control
-├── static/
-│   ├── index.html           # Single-page dashboard
-│   ├── css/theme.css        # 9 VS Code-inspired themes
-│   └── js/app.js            # AlpineJS frontend logic
-├── data/                    # Per-project JSON config storage
-├── docs/
-│   ├── img/gitmgr.png       # Dashboard screenshot
-│   └── USAGE.md             # Detailed usage guide
-└── tests/                   # 39 pytest tests
-    ├── conftest.py
-    ├── test_auth.py
-    └── test_projects.py
+│       ├── auth.py          # HMAC-signed session auth
+│       └── projects.py      # REST API + worker control
+├── static/                  # Single-page dashboard (AlpineJS + 9 themes)
+├── data/                    # Per-project JSON config (gitignored)
+└── tests/                   # 67 pytest tests
 ```
 
 ---
 
 ## 🌐 API Reference
 
-All endpoints require authentication via session cookie (login at `/api/auth/login`).
+All endpoints require session cookie authentication.
 
 | Method | Endpoint | Description |
 |---|---|---|
 | `POST` | `/api/auth/login` | Login with username & password |
-| `POST` | `/api/auth/logout` | Logout (requires auth) |
-| `GET` | `/api/auth/check` | Check current session |
+| `POST` | `/api/auth/logout` | Clear session |
+| `GET` | `/api/auth/check` | Validate current session |
 | `GET` | `/api/projects` | List all projects |
 | `POST` | `/api/projects` | Create a new project |
-| `GET` | `/api/projects/{id}` | Get project details |
+| `GET` | `/api/projects/{id}` | Get project with full config |
 | `PUT` | `/api/projects/{id}` | Update project config |
 | `DELETE` | `/api/projects/{id}` | Delete a project |
 | `POST` | `/api/projects/{id}/run` | Start background sync worker |
@@ -195,11 +241,35 @@ All endpoints require authentication via session cookie (login at `/api/auth/log
 
 ---
 
+## 🧪 Testing
+
+```bash
+pytest tests/ -v
+```
+
+```
+67 passed in 2.3s
+```
+
+Tests cover: authentication, project CRUD, worker control, rate limiting, orphan cleanup, incremental copy, hot-reload ordering, and config persistence.
+
+---
+
+## 🔒 Security
+
+- **Authentication:** HMAC-SHA256 signed cookies — stateless, survives restarts
+- **Rate Limiting:** 60 req/min per IP — configurable
+- **Scanner Detection:** Auto-bans IPs probing for `.env`, `.git`, credentials (2 strikes → 1hr ban)
+- **Localhost Whitelist:** `127.0.0.1`, `::1`, private subnets — prevents self-lockout
+- **No Cloud:** Runs entirely on your machine — your data never leaves
+
+---
+
 ## 🤝 Contributing
 
 1. **Fork** the repository
 2. **Branch:** `git checkout -b feature/your-feature`
-3. **Commit:** Follow conventional commit messages (`feat:`, `fix:`, `chore:`)
+3. **Commit:** Follow conventional commits (`feat:`, `fix:`, `chore:`)
 4. **Test:** `pytest tests/` must pass
 5. **PR:** Open a Pull Request
 
@@ -213,8 +283,8 @@ MIT License — free to use, modify, and distribute.
 
 <div align="center">
 
-**Made for developers who sync a lot.**
+**Built to solve a real problem — keeping AI agents alive with the latest skills from across the ecosystem.**
 
-*If this tool saved you time, give it a ⭐ on [GitHub](https://github.com/mdnaimul22/GitManager)!*
+*If this solves your problem too, give it a ⭐ on [GitHub](https://github.com/mdnaimul22/GitManager)!*
 
 </div>
