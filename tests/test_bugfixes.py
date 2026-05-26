@@ -417,37 +417,32 @@ class TestOrphanCleanup:
         removed = cleanup_orphans({str(orphan)}, set())
         assert "old-skill" in removed
 
-    def test_disk_scan_finds_ghost_not_in_memory(self, tmp_path):
-        """Ghost skill on disk but NOT in previous_managed must be detected.
+    def test_manual_skills_never_deleted(self, tmp_path):
+        """User's own manual skills must NEVER be touched by orphan cleanup.
 
-        This is the root cause of the persistent ghost skill bug:
-        a skill committed to git before forward rule removal won't be in
-        previous_managed, so memory-only diff misses it.
+        Only paths that were previously tracked in memory (previous_managed)
+        are candidates for removal. Manually created dirs that were never
+        in any forward rule must survive.
         """
         from src.services.forward import cleanup_orphans
 
         skills_dir = tmp_path / "skills"
         skills_dir.mkdir()
 
-        # Skill A is active (in current_managed)
-        skill_a = skills_dir / "skill-a"
-        skill_a.mkdir()
-        (skill_a / "SKILL.md").write_text("active")
+        # Managed skill (in both previous and current)
+        managed = skills_dir / "managed-skill"
+        managed.mkdir()
+        (managed / "SKILL.md").write_text("managed")
 
-        # Skill B is a ghost — on disk but NOT in any managed set
-        ghost = skills_dir / "ghost-skill"
-        ghost.mkdir()
-        (ghost / "SKILL.md").write_text("ghost")
+        # User's own manual skill — NEVER in memory
+        manual = skills_dir / "my-custom-helpers"
+        manual.mkdir()
+        (manual / "utils.py").write_text("# user code")
 
-        # Only skill-a is current; ghost is NOT in previous_managed either
-        current = {str(skill_a)}
-        previous = {str(skill_a)}  # ghost never recorded
+        current = {str(managed)}
+        previous = {str(managed)}
 
         removed = cleanup_orphans(previous, current)
-        assert "ghost-skill" in removed, (
-            "Disk scan must detect ghost-skill even though it wasn't in previous_managed"
-        )
-        assert not ghost.exists(), "Ghost must be deleted from disk"
-        assert skill_a.exists(), "Active skill must NOT be deleted"
-
-
+        assert len(removed) == 0, "No orphans should be detected"
+        assert manual.exists(), "User's manual skill must NOT be deleted"
+        assert managed.exists(), "Managed skill must NOT be deleted"

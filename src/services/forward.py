@@ -126,15 +126,12 @@ def cleanup_orphans(
     repo_root: str = "",
 ) -> list[str]:
     """
-    Remove destination paths that were previously managed but are no longer
-    in the current forwarding config.
+    Remove destination paths that were previously managed by the forwarding
+    system but are no longer in the current forwarding config.
 
-    Uses TWO detection strategies:
-      1. Memory diff: previous_managed - current_managed
-      2. Disk scan: items on disk in known destination dirs but NOT in current_managed
-
-    Strategy 2 catches orphans that were already committed to git before the
-    forward rule was removed (the root cause of the ghost skill bug).
+    IMPORTANT: Only paths tracked in memory (previous_managed) are candidates
+    for removal. User's own manually-created files/dirs that were NEVER in a
+    forward rule are NEVER touched.
 
     Also removes from git index if repo_root is provided, preventing
     git pull from restoring deleted paths.
@@ -143,28 +140,7 @@ def cleanup_orphans(
         removed: list of names that were cleaned up
     """
     removed: list[str] = []
-
-    # Strategy 1: Memory-based diff
     orphans = previous_managed - current_managed
-
-    # Strategy 2: Disk scan — find items on disk that shouldn't exist
-    # Collect all unique destination parent dirs from current_managed
-    dest_parents: set[str] = set()
-    for path in current_managed | previous_managed:
-        parent = path.rsplit("/", 1)[0]
-        if parent:
-            dest_parents.add(parent)
-
-    for parent_dir in dest_parents:
-        if not is_dir(parent_dir):
-            continue
-        from src.config import list_files
-        for child in list_files(parent_dir, "*"):
-            if not child.is_dir():
-                continue
-            child_abs = str(child)
-            if child_abs not in current_managed:
-                orphans.add(child_abs)
 
     for orphan_rel in orphans:
         if exists(orphan_rel):
