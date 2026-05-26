@@ -100,7 +100,7 @@ def commit_and_push(
     for up_name, files in upstream_changes.items():
         if not files:
             continue
-        ok_add, out_add = run_git(["add", "--all", "--"] + files, repo_root, logger)
+        ok_add, out_add = run_git(["add", "--"] + files, repo_root, logger)
         if not ok_add:
             logger.error(f"     ✗  git add failed for {up_name}: {out_add}")
 
