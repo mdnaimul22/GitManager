@@ -68,17 +68,15 @@ def sync_job(watcher: ConfigWatcher) -> None:
     ok, status_out = get_status(repo_root, logger)
 
     upstream_changes: dict[str, list[str]] = {}
-    manual_changes: list[str] = []
 
     if ok and status_out.strip():
-        upstream_changes, manual_changes = classify_changes(
+        upstream_changes = classify_changes(
             status_out, watcher.forwards, watcher.upstreams, repo_root
         )
 
     push_ok = commit_and_push(
         repo_root=repo_root,
         upstream_changes=upstream_changes,
-        manual_changes=manual_changes,
         branch=branch,
         current_time=current_time,
         commit_messages=git_cfg.commit_messages,
