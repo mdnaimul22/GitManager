@@ -123,10 +123,14 @@ def forward_skills(
 def cleanup_orphans(
     previous_managed: set[str],
     current_managed: set[str],
+    repo_root: str = "",
 ) -> list[str]:
     """
     Remove destination paths that were previously managed but are no longer
     in the current forwarding config.
+
+    Also removes from git index if repo_root is provided, preventing
+    git pull from restoring deleted paths.
 
     Returns:
         removed: list of names that were cleaned up
@@ -139,8 +143,19 @@ def cleanup_orphans(
             name = orphan_rel.rsplit("/", 1)[-1]
             logger.warning(f"  🗑️  Removing orphaned upstream skill: {name}")
             try:
+                # Remove from git index first (prevents git pull from restoring)
+                if repo_root:
+                    import subprocess
+                    subprocess.run(
+                        ["git", "rm", "-r", "--cached", "--quiet", orphan_rel],
+                        cwd=repo_root,
+                        capture_output=True,
+                        timeout=10,
+                    )
+                # Then remove from disk
                 delete(orphan_rel)
                 removed.append(name)
+                logger.info(f"     ✅  Removed orphan: {name}")
             except Exception as exc:
                 logger.error(f"     ✗  Failed to remove {name}: {exc}")
 

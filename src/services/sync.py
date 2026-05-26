@@ -58,7 +58,7 @@ def sync_job(watcher: ConfigWatcher) -> None:
 
     # Step 2.5 — Orphan cleanup
     logger.info(f"🧹 [{project_id}] STEP 2.5 — Cleaning up orphaned upstream skills")
-    removed = cleanup_orphans(previous_managed, current_managed)
+    removed = cleanup_orphans(previous_managed, current_managed, repo_root=repo_root)
     save_registry(current_managed, memory_rel)
 
     # Step 3 — Commit & push
