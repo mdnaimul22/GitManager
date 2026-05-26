@@ -7,6 +7,7 @@ from .upstream import pull_upstreams
 from .forward import forward_skills, cleanup_orphans, load_registry, save_registry
 from .commit import classify_changes, commit_and_push
 from .project import (
+    load_project_configs,
     list_projects, get_project, create_project,
     update_project, delete_project, update_project_status,
 )
@@ -20,6 +21,7 @@ __all__ = [
     "save_registry",
     "classify_changes",
     "commit_and_push",
+    "load_project_configs",
     "list_projects",
     "get_project",
     "create_project",

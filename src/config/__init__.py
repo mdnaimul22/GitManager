@@ -6,7 +6,8 @@ Auto-loads environment variables and exports all configuration utilities.
 from .paths import PROJECT_ROOT, find_project_root
 from .files import (
     read_text, write_text, read_json, write_json,
-    exists, is_file, is_dir, ensure_dir, delete, list_files, get_abs_path,
+    exists, is_file, is_dir, ensure_dir, delete, list_files,
+    get_abs_path, get_mtime,
 )
 from .dotenv import load_dotenv, set_value, get_value, remove_value
 from .settings import Settings
@@ -29,6 +30,7 @@ __all__ = [
     "delete",
     "list_files",
     "get_abs_path",
+    "get_mtime",
     "load_dotenv",
     "set_value",
     "get_value",

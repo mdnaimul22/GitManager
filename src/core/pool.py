@@ -139,9 +139,8 @@ class WorkerPool:
             if stop_event.is_set():
                 break
 
-            sched.run_pending()
-
-            # Hot-reload check
+            # Hot-reload check — MUST run before scheduled tasks so
+            # sync_job always uses the latest config from disk.
             if watcher.has_changed():
                 logger.info(f"   [{project_id}] Config change detected — reloading")
                 watcher.reload()
@@ -151,6 +150,8 @@ class WorkerPool:
                     sync_job(watcher)
                 except Exception as exc:
                     logger.error(f"   [{project_id}] Sync after reload failed: {exc}")
+
+            sched.run_pending()
 
         logger.info(f"   [{project_id}] Worker loop stopped")
 

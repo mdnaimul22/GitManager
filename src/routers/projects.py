@@ -75,6 +75,9 @@ def api_update_project(project_id: str, data: ProjectUpdate):
     result = update_project(project_id, data)
     if not result:
         raise HTTPException(status_code=404, detail="Project not found")
+    pool = _get_pool()
+    if pool.is_running(project_id):
+        result.status = "running"
     return result
 
 

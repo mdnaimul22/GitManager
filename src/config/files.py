@@ -64,6 +64,10 @@ def get_size(relative_path: str) -> int:
     return os.path.getsize(_abs(relative_path))
 
 
+def get_mtime(relative_path: str) -> float:
+    return os.path.getmtime(_abs(relative_path))
+
+
 def read_from_pos(relative_path: str, pos: int, encoding: str = "utf-8") -> str:
     with open(_abs(relative_path), "r", encoding=encoding, errors="ignore") as f:
         f.seek(pos)

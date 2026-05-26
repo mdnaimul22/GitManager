@@ -5,7 +5,7 @@ Skill path forwarding and orphan cleanup service.
 import shutil
 
 from src.config import (
-    Settings, setup_logger, get_abs_path,
+    Settings, setup_logger, get_abs_path, get_mtime,
     read_json, write_json, exists, is_file, is_dir, ensure_dir, delete,
 )
 from src.schema import ForwardRule
@@ -30,18 +30,39 @@ def save_registry(paths: set[str], rel: str) -> None:
     write_json(rel, sorted(list(paths)))
 
 
+def _copy_if_newer(src_path: str, dst_path: str) -> bool:
+    """Copy src to dst only if src is newer. Returns True if copied."""
+    if exists(dst_path):
+        if get_mtime(src_path) <= get_mtime(dst_path):
+            return False
+
+    shutil.copy2(get_abs_path(src_path), get_abs_path(dst_path))
+    return True
+
+
+def _incremental_copy_function(src: str, dst: str) -> str:
+    """shutil.copytree copy_function — skips unchanged files.
+
+    Uses config API (exists, is_file, get_mtime) which handles absolute paths.
+    """
+    if is_file(src) and is_file(dst):
+        if get_mtime(src) <= get_mtime(dst):
+            return dst
+    return shutil.copy2(src, dst)
+
+
 def forward_skills(
     forwards: list[ForwardRule],
 ) -> tuple[list[str], set[str]]:
     """
     Copy files/dirs from source to destination per forwarding rules.
+    Uses mtime-based incremental copy to avoid redundant I/O.
 
     Returns:
         copied: list of names that were copied
         touched_dsts: set of relative destination paths (for orphan tracking)
     """
     copied: list[str] = []
-    cleared_dsts: set[str] = set()
     touched_dsts: set[str] = set()
 
     project_root = get_abs_path()
@@ -77,18 +98,19 @@ def forward_skills(
                     ensure_dir(parent)
                     actual_dst = dst
 
-                shutil.copy2(src, actual_dst)
-                logger.info(f"     ✅  [File] {src} → {actual_dst}")
-                copied.append(name)
+                if _copy_if_newer(src, actual_dst):
+                    logger.info(f"     ✅  [File] {src} → {actual_dst}")
+                    copied.append(name)
+                else:
+                    logger.debug(f"     ⏭  [File] {name} — unchanged, skipped")
 
             elif is_dir(src):
-                resolved_dst = get_abs_path(dst)
-                if resolved_dst not in cleared_dsts:
-                    if exists(dst):
-                        delete(dst)
-                    cleared_dsts.add(resolved_dst)
-
-                shutil.copytree(src, dst, dirs_exist_ok=True)
+                ensure_dir(dst)
+                shutil.copytree(
+                    src, dst,
+                    dirs_exist_ok=True,
+                    copy_function=_incremental_copy_function,
+                )
                 logger.info(f"     ✅  [Dir]  {src} → {dst}")
                 copied.append(name)
 

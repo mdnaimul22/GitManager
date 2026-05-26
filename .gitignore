@@ -144,6 +144,12 @@ env
 
 archived/
 
+# Runtime user data (managed by the application at runtime)
+data/
+
+# Generated structure files
+*_structure.md
+
 # Python
 __pycache__/
 *.py[cod]

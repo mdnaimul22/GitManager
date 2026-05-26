@@ -198,7 +198,9 @@ document.addEventListener('alpine:init', () => {
                 const res = await this.api('POST', `/${id}/run`);
                 this.showToast(res.status === 'started' ? 'Sync started' : 'Already running');
                 await this.fetchProjects();
-                if (this.activeProjectId === id) await this.selectProject(id);
+                if (this.activeProject && this.activeProjectId === id) {
+                    this.activeProject.status = 'running';
+                }
             } catch (e) { alert('Run failed: ' + e.message); }
         },
         async stopProject(id) {
@@ -206,7 +208,9 @@ document.addEventListener('alpine:init', () => {
                 await this.api('POST', `/${id}/stop`);
                 this.showToast('Stopped');
                 await this.fetchProjects();
-                if (this.activeProjectId === id) await this.selectProject(id);
+                if (this.activeProject && this.activeProjectId === id) {
+                    this.activeProject.status = 'idle';
+                }
             } catch (e) { alert('Stop failed: ' + e.message); }
         },
 

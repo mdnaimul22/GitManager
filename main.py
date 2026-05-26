@@ -66,8 +66,7 @@ if __name__ == "__main__":
     import uvicorn
 
     def kill_port(port: int) -> None:
-        """Force-kill any process on the given port and wait until it's free."""
-        killed = False
+        """Gracefully stop any process on the given port, then force-kill if needed."""
         try:
             result = subprocess.run(
                 ["lsof", "-ti", f":{port}"],
@@ -77,45 +76,58 @@ if __name__ == "__main__":
             if not pids:
                 return
             my_pid = os.getpid()
-            for pid_str in pids.splitlines():
-                pid = int(pid_str.strip())
-                if pid == my_pid:
-                    continue
-                try:
-                    os.kill(pid, signal.SIGKILL)
-                    logger.info(f"Force-killed PID {pid} on port {port}")
-                    killed = True
-                except ProcessLookupError:
-                    logger.debug(f"PID {pid} not found when trying to kill")
-        except FileNotFoundError:
-            try:
-                subprocess.run(
-                    ["fuser", "-k", "-9", f"{port}/tcp"],
-                    capture_output=True, timeout=5,
-                )
-                killed = True
-                logger.info(f"Force-killed process on port {port} via fuser")
-            except (FileNotFoundError, subprocess.TimeoutExpired):
-                logger.warning(f"Cannot auto-kill port {port}: lsof/fuser unavailable")
-        except (subprocess.TimeoutExpired, ValueError) as e:
-            logger.debug(f"Port cleanup interrupted: {e}")
+            target_pids = [
+                int(p.strip()) for p in pids.splitlines()
+                if p.strip() and int(p.strip()) != my_pid
+            ]
+            if not target_pids:
+                return
 
-        if killed:
-            # Wait until the port is actually freed (max 3 seconds)
-            for _ in range(15):
+            # Phase 1: Graceful SIGTERM (allows lifespan shutdown)
+            for pid in target_pids:
+                try:
+                    os.kill(pid, signal.SIGTERM)
+                    logger.info(f"Sent SIGTERM to PID {pid} on port {port}")
+                except ProcessLookupError:
+                    pass
+
+            # Wait up to 5 seconds for graceful shutdown
+            for _ in range(25):
                 time.sleep(0.2)
                 check = subprocess.run(
                     ["lsof", "-ti", f":{port}"],
                     capture_output=True, text=True, timeout=3,
                 )
                 remaining = [
-                    p for p in check.stdout.strip().splitlines()
-                    if p.strip() and int(p.strip()) != os.getpid()
+                    int(p.strip()) for p in check.stdout.strip().splitlines()
+                    if p.strip() and int(p.strip()) != my_pid
                 ]
                 if not remaining:
-                    logger.info(f"Port {port} is now free")
+                    logger.info(f"Port {port} is now free (graceful)")
                     return
-            logger.warning(f"Port {port} may still be occupied after kill")
+
+            # Phase 2: Force-kill survivors
+            for pid in remaining:
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                    logger.warning(f"Force-killed PID {pid} on port {port}")
+                except ProcessLookupError:
+                    pass
+
+            time.sleep(0.5)
+            logger.info(f"Port {port} cleanup complete")
+
+        except FileNotFoundError:
+            try:
+                subprocess.run(
+                    ["fuser", "-k", f"{port}/tcp"],
+                    capture_output=True, timeout=5,
+                )
+                logger.info(f"Killed process on port {port} via fuser")
+            except (FileNotFoundError, subprocess.TimeoutExpired):
+                logger.warning(f"Cannot auto-kill port {port}: lsof/fuser unavailable")
+        except (subprocess.TimeoutExpired, ValueError) as e:
+            logger.debug(f"Port cleanup interrupted: {e}")
 
     kill_port(Settings.API_PORT)
 
