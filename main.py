@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from src.config import Settings, setup_logger, get_abs_path, ensure_dir
-from src.core import WorkerPool
+from src.core import WorkerPool, RateLimitMiddleware
 from src.routers import projects_router, auth_router, set_pool
 
 logger = setup_logger(Settings.LOG_DIR / "main.log", name="gitmanager.main")
@@ -42,6 +42,15 @@ app = FastAPI(
     title="GitManager",
     version=Settings.VERSION,
     lifespan=lifespan,
+)
+
+# Security middleware — rate limit + scanner auto-ban
+app.add_middleware(
+    RateLimitMiddleware,
+    max_requests=60,        # 60 requests per minute per IP
+    window_seconds=60,
+    ban_duration=3600,      # 1 hour ban for scanners
+    scanner_threshold=2,    # 2 scanner probe hits = instant ban
 )
 
 # Mount API routers
