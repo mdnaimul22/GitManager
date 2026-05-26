@@ -143,17 +143,25 @@ def commit_and_push(
         return True
 
     # 4. Push
+    # NOTE: No pre-push pull here! Step 0 already runs git pull --rebase.
+    # A second pull here would restore orphaned files from remote that were
+    # just deleted by cleanup_orphans, causing the ghost skill zombie loop.
     logger.info(f"  🚀 Pushing → origin/{branch} …")
-    ok_pull, out_pull = run_git(
-        ["pull", "--rebase", "--autostash", "origin", branch], repo_root, logger
-    )
-    if not ok_pull:
-        logger.error(f"     ✗  Pre-push pull failed: {out_pull}")
-
     ok, out = run_git(["push", "origin", branch], repo_root, logger)
     if not ok:
-        logger.error(f"     ✗  {out}")
-        return False
+        # If push fails due to non-fast-forward, try pull + push once
+        if "non-fast-forward" in out or "rejected" in out:
+            logger.warning("     ⚠️  Push rejected — pulling and retrying…")
+            ok_pull, _ = run_git(
+                ["pull", "--rebase", "--autostash", "origin", branch],
+                repo_root, logger,
+            )
+            if ok_pull:
+                ok, out = run_git(["push", "origin", branch], repo_root, logger)
+
+        if not ok:
+            logger.error(f"     ✗  {out}")
+            return False
 
     logger.info("     ✅  Push successful.")
     return True
