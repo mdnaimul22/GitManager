@@ -33,7 +33,7 @@ SCANNER_PATTERNS: set[str] = {
 }
 
 # IPs that should never be rate-limited or banned
-WHITELISTED_IPS: set[str] = {"127.0.0.1", "::1", "localhost"}
+WHITELISTED_IPS: set[str] = {"127.0.0.1", "::1", "localhost", "testclient"}
 
 
 def _is_whitelisted(ip: str) -> bool:
