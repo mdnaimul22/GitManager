@@ -315,3 +315,105 @@ class TestSharedConfigLoader:
         )
         assert upstreams == []
         assert forwards == []
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Orphan cleanup — THE root cause fix
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestOrphanCleanup:
+    """cleanup_orphans() must remove orphans from BOTH disk AND git index."""
+
+    def test_orphan_detected_when_rule_removed(self):
+        """If a path was previously managed but not in current, it's an orphan."""
+        previous = {"/dst/skill-a", "/dst/skill-b", "/dst/skill-c"}
+        current = {"/dst/skill-a", "/dst/skill-c"}
+        orphans = previous - current
+        assert orphans == {"/dst/skill-b"}
+
+    def test_cleanup_removes_from_disk(self, tmp_path):
+        """cleanup_orphans deletes orphaned paths from disk."""
+        from src.services.forward import cleanup_orphans
+
+        # Create a fake orphan on disk
+        orphan_dir = tmp_path / "orphan-skill"
+        orphan_dir.mkdir()
+        (orphan_dir / "SKILL.md").write_text("test")
+
+        previous = {str(orphan_dir)}
+        current = set()  # orphan_dir no longer in forward rules
+
+        removed = cleanup_orphans(previous, current)
+        assert "orphan-skill" in removed
+        assert not orphan_dir.exists(), "Orphan directory must be deleted from disk"
+
+    def test_cleanup_runs_git_rm_when_repo_root_given(self, tmp_path):
+        """When repo_root is provided, git rm is attempted on orphans."""
+        import subprocess
+        from src.services.forward import cleanup_orphans
+
+        # Create a git repo in tmp
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        subprocess.run(["git", "init"], cwd=str(repo), capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=str(repo), capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=str(repo), capture_output=True,
+        )
+
+        # Create and commit a skill directory
+        skill = repo / "skills" / "ghost-skill"
+        skill.mkdir(parents=True)
+        (skill / "SKILL.md").write_text("ghost")
+        subprocess.run(["git", "add", "."], cwd=str(repo), capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "init"],
+            cwd=str(repo), capture_output=True,
+        )
+
+        # Verify it's tracked
+        result = subprocess.run(
+            ["git", "ls-files", "--", "skills/ghost-skill/"],
+            cwd=str(repo), capture_output=True, text=True,
+        )
+        assert result.stdout.strip() != "", "Skill must be git-tracked before cleanup"
+
+        # Run cleanup with repo_root
+        previous = {str(skill)}
+        current = set()
+        removed = cleanup_orphans(previous, current, repo_root=str(repo))
+
+        assert "ghost-skill" in removed
+        assert not skill.exists(), "Orphan must be deleted from disk"
+
+        # Verify it's also removed from git index
+        result = subprocess.run(
+            ["git", "ls-files", "--", "skills/ghost-skill/"],
+            cwd=str(repo), capture_output=True, text=True,
+        )
+        assert result.stdout.strip() == "", "Orphan must be removed from git index"
+
+    def test_cleanup_accepts_repo_root_kwarg(self):
+        """cleanup_orphans signature must accept repo_root parameter."""
+        import inspect
+        from src.services.forward import cleanup_orphans
+        sig = inspect.signature(cleanup_orphans)
+        assert "repo_root" in sig.parameters, (
+            "cleanup_orphans must accept repo_root parameter"
+        )
+
+    def test_cleanup_no_crash_without_repo_root(self, tmp_path):
+        """cleanup_orphans works without repo_root (backward compatible)."""
+        from src.services.forward import cleanup_orphans
+
+        orphan = tmp_path / "old-skill"
+        orphan.mkdir()
+        (orphan / "file.txt").write_text("x")
+
+        removed = cleanup_orphans({str(orphan)}, set())
+        assert "old-skill" in removed
+
