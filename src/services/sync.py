@@ -61,6 +61,16 @@ def sync_job(watcher: ConfigWatcher) -> None:
     removed = cleanup_orphans(previous_managed, current_managed, repo_root=repo_root)
     save_registry(current_managed, memory_rel)
 
+    # Step 2.5b — Commit orphan deletions immediately (before upstream commit)
+    # This is critical: if we skip this, git pull on next sync restores ghosts
+    # from remote because the deletion was staged but never committed/pushed.
+    if removed:
+        orphan_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+        orphan_msg = f"chore: remove {len(removed)} orphaned skill(s) [{orphan_time}]"
+        run_git(["commit", "-m", orphan_msg], repo_root, logger)
+        if git_cfg.auto_push:
+            run_git(["push", "origin", branch], repo_root, logger)
+
     # Step 3 — Commit & push
     logger.info(f"🚀 [{project_id}] STEP 3 — Committing & pushing to own repo")
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
