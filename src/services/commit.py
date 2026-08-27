@@ -9,6 +9,15 @@ from src.schema import CommitMessages, ForwardRule, UpstreamEntry
 logger = setup_logger(Settings.LOG_DIR / "service.log", name="gitmanager.services.commit")
 
 
+def _to_abs(path: str, repo_root: str) -> str:
+    """Ensure path is resolved to absolute string against repo_root."""
+    if not path:
+        return ""
+    if path.startswith("/"):
+        return path
+    return f"{repo_root.rstrip('/')}/{path.lstrip('/')}"
+
+
 def classify_changes(
     status_output: str,
     forwards: list[ForwardRule],
@@ -37,9 +46,9 @@ def classify_changes(
         if " -> " in changed_file:
             changed_file = changed_file.split(" -> ")[-1].strip('"')
 
-        changed_abs = get_abs_path(changed_file)
+        changed_abs = _to_abs(changed_file, repo_root)
 
-        matched_upstream = _match_to_upstream(changed_abs, forwards, upstreams)
+        matched_upstream = _match_to_upstream(changed_abs, forwards, upstreams, repo_root)
 
         if matched_upstream:
             upstream_changes.setdefault(matched_upstream, []).append(changed_file)
@@ -56,23 +65,25 @@ def _match_to_upstream(
     changed_abs: str,
     forwards: list[ForwardRule],
     upstreams: list[UpstreamEntry],
+    repo_root: str,
 ) -> str | None:
     """Match a changed file path to its upstream origin via forward rules."""
     for rule in forwards:
         if not rule.enabled or not rule.to_path:
             continue
 
-        dst_abs = get_abs_path(rule.to_path)
+        dst_abs = _to_abs(rule.to_path, repo_root).rstrip("/")
         is_match = changed_abs == dst_abs or changed_abs.startswith(dst_abs + "/")
 
         if is_match and rule.from_path:
-            src_abs = get_abs_path(rule.from_path)
+            src_abs = _to_abs(rule.from_path, repo_root).rstrip("/")
             for up in upstreams:
-                up_abs = get_abs_path(up.path)
+                up_abs = _to_abs(up.path, repo_root).rstrip("/")
                 if src_abs == up_abs or src_abs.startswith(up_abs + "/"):
                     return up.name
 
     return None
+
 
 
 def commit_and_push(

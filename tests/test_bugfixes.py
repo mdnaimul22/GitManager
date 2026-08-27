@@ -101,6 +101,12 @@ class TestPutResponseLiveStatus:
         assert resp.status_code == 200
         assert resp.json()["status"] == "idle"
 
+        # Restore original interval_minutes for subsequent test suites
+        auth_client.put("/api/projects/test-project", json={
+            "schedule": {"interval_minutes": 5, "poll_interval_seconds": 30},
+        })
+
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Bug #5: Lock scope — update_project returns consistent data
@@ -446,3 +452,57 @@ class TestOrphanCleanup:
         assert len(removed) == 0, "No orphans should be detected"
         assert manual.exists(), "User's manual skill must NOT be deleted"
         assert managed.exists(), "Managed skill must NOT be deleted"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Smart Path Resolution
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestSmartPathResolution:
+    """Automatic path normalization for relative, absolute, and template paths."""
+
+    def test_normalize_relative_path(self):
+        from src.core.resolver import normalize_path
+        res = normalize_path(".anthropics-skills", "/home/user/project")
+        assert res == "/home/user/project/.anthropics-skills"
+
+    def test_normalize_nested_relative_path(self):
+        from src.core.resolver import normalize_path
+        res = normalize_path("skills/storage/anthropics_skills", "/home/user/project")
+        assert res == "/home/user/project/skills/storage/anthropics_skills"
+
+    def test_normalize_absolute_path_unchanged(self):
+        from src.core.resolver import normalize_path
+        res = normalize_path("/opt/custom/path", "/home/user/project")
+        assert res == "/opt/custom/path"
+
+    def test_normalize_repo_root_placeholder(self):
+        from src.core.resolver import normalize_path
+        res = normalize_path("{REPO_ROOT}/skills", "/home/user/project")
+        assert res == "/home/user/project/skills"
+
+    def test_resolve_placeholders_dict(self):
+        from src.core.resolver import resolve_placeholders
+        raw_config = {
+            "name": "anthropics-skills",
+            "path": ".anthropics-skills",
+            "url": "https://github.com/anthropics/skills.git",
+            "branch": "main",
+            "forwards": [
+                {"from": ".anthropics-skills/skills", "to": "skills/storage", "enabled": True}
+            ],
+            "messages": "chore: {count} files"
+        }
+        resolved = resolve_placeholders(raw_config, repo_root="/home/user/project")
+
+        # Path keys must be normalized with repo_root
+        assert resolved["path"] == "/home/user/project/.anthropics-skills"
+        assert resolved["forwards"][0]["from"] == "/home/user/project/.anthropics-skills/skills"
+        assert resolved["forwards"][0]["to"] == "/home/user/project/skills/storage"
+
+        # Non-path keys must NOT be corrupted
+        assert resolved["name"] == "anthropics-skills"
+        assert resolved["url"] == "https://github.com/anthropics/skills.git"
+        assert resolved["branch"] == "main"
+        assert resolved["messages"] == "chore: {count} files"
+

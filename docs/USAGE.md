@@ -93,7 +93,10 @@ Forwards are grouped by upstream name in the UI for easy navigation.
 - Multiple forwards can safely write to the same destination directory (Wipe-Once Merge Strategy).
 - Set a forward to **OFF** to temporarily pause it without deleting the rule.
 
-You can use `{REPO_ROOT}` as a placeholder for your project's root path in the path fields — GitManager resolves it automatically.
+**Smart Path Resolution:**
+- You can simply write relative directory paths (e.g., `From: .anthropics-skills/skills`, `To: skills/storage/anthropics_skills`) — GitManager automatically attaches your project's root path.
+- Absolute paths (e.g., `/home/user/...` or `~/...`) are used as-is.
+- `{REPO_ROOT}` placeholder is also supported for explicit templating.
 
 ---
 

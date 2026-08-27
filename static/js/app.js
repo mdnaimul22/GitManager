@@ -230,18 +230,23 @@ document.addEventListener('alpine:init', () => {
         get groupedForwards() {
             if (!this.activeProject) return {};
             const groups = {};
-            const upNames = this.activeProject.upstreams.map(u => u.name);
-            this.activeProject.forwards.forEach((f, i) => {
+            const upNames = (this.activeProject.upstreams || []).map(u => u.name).filter(Boolean);
+            (this.activeProject.forwards || []).forEach((f, i) => {
                 let cat = 'other';
-                const src = f.from || '';
+                const src = (f.from || '').toLowerCase();
                 for (const name of upNames) {
-                    if (src.includes(`/.${name}/`) || src.includes(`/${name}/`)) { cat = name; break; }
+                    const cleanName = name.toLowerCase().replace(/^[._]/, '');
+                    if (src.includes(cleanName) || src.includes(name.toLowerCase())) {
+                        cat = name;
+                        break;
+                    }
                 }
                 if (!groups[cat]) groups[cat] = [];
                 groups[cat].push({ ...f, _idx: i });
             });
             return groups;
         },
+
 
         // ── Helpers ───────────────────────────────────────────────────
         maskPath(p) { return (p || '').replace(/^\/home\/[^/]+\//, '{~}/'); },

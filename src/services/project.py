@@ -16,37 +16,37 @@ from src.schema import (
 )
 
 
+from src.core.resolver import resolve_placeholders
+
 # ── Shared Config Loader ──────────────────────────────────────────────────────
 
 def load_project_configs(
     project_id: str,
     project_path: str,
+    resolve: bool = True,
 ) -> tuple[list[UpstreamEntry], list[ForwardRule], AutomationConfig]:
     """
-    Load and resolve all per-project config files.
+    Load per-project config files.
 
-    Shared by both get_project() (API reads) and ConfigWatcher (worker thread).
-    Single source of truth for JSON → Pydantic parsing.
+    If resolve=True (for worker thread/runtime), replaces {REPO_ROOT} and
+    normalizes relative paths to absolute paths.
+    If resolve=False (for API/UI display), preserves clean relative paths.
     """
-    raw_upstream = resolve_placeholders(
-        _read_project_json(project_id, Settings.UPSTREAM_FILE),
-        repo_root=project_path,
-    )
-    raw_forward = resolve_placeholders(
-        _read_project_json(project_id, Settings.FORWARD_FILE),
-        repo_root=project_path,
-    )
-    raw_automation = resolve_placeholders(
-        _read_project_json(project_id, Settings.AUTOMATION_FILE),
-        repo_root=project_path,
-    )
+    raw_upstream = _read_project_json(project_id, Settings.UPSTREAM_FILE)
+    raw_forward = _read_project_json(project_id, Settings.FORWARD_FILE)
+    raw_automation = _read_project_json(project_id, Settings.AUTOMATION_FILE)
+
+    if resolve:
+        raw_upstream = resolve_placeholders(raw_upstream, repo_root=project_path)
+        raw_forward = resolve_placeholders(raw_forward, repo_root=project_path)
+        raw_automation = resolve_placeholders(raw_automation, repo_root=project_path)
 
     upstreams = [UpstreamEntry(**u) for u in raw_upstream.get("upstreams", [])]
     forwards = [ForwardRule(**f) for f in raw_forward.get("forwards", [])]
     automation = AutomationConfig(**raw_automation)
 
     return upstreams, forwards, automation
-from src.core.resolver import resolve_placeholders
+
 
 logger = setup_logger(Settings.LOG_DIR / "service.log", name="gitmanager.services.project")
 
@@ -121,13 +121,15 @@ def list_projects() -> list[ProjectMeta]:
 
 
 def get_project(project_id: str) -> ProjectDetail | None:
-    """Load full project config (meta + per-project data)."""
+    """Load full project config (meta + per-project data) for API/UI."""
     projects = _load_registry()
     meta = next((p for p in projects if p.id == project_id), None)
     if not meta:
         return None
 
-    upstreams, forwards, automation = load_project_configs(project_id, meta.path)
+    upstreams, forwards, automation = load_project_configs(
+        project_id, meta.path, resolve=False
+    )
 
     return ProjectDetail(
         **meta.model_dump(),
@@ -136,6 +138,7 @@ def get_project(project_id: str) -> ProjectDetail | None:
         git=automation.git,
         schedule=automation.schedule,
     )
+
 
 
 def create_project(data: ProjectCreate) -> ProjectMeta:
