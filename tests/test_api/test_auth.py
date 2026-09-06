@@ -1,7 +1,11 @@
 """
 Authentication endpoint tests.
 
-Covers: login, logout, session check, unauthorized access protection.
+Covers:
+- POST /api/auth/login (valid, invalid credentials, validation errors)
+- GET /api/auth/check (authenticated, unauthenticated)
+- POST /api/auth/logout (session invalidation)
+- Protected route authentication guards
 """
 
 import pytest
@@ -37,7 +41,7 @@ class TestLogin:
 
     def test_login_empty_body(self, client):
         resp = client.post("/api/auth/login", json={})
-        assert resp.status_code == 422  # Validation error
+        assert resp.status_code == 422
 
     def test_login_missing_fields(self, client):
         resp = client.post("/api/auth/login", json={"username": "admin"})

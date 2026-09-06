@@ -1,7 +1,15 @@
 """
 Project CRUD and worker control endpoint tests.
 
-Covers: list, create, get, update, delete, run, stop.
+Covers:
+- GET /api/projects (list)
+- GET /api/projects/{id} (detail)
+- POST /api/projects (create)
+- PUT /api/projects/{id} (update)
+- DELETE /api/projects/{id} (delete)
+- POST /api/projects/{id}/run (start worker)
+- POST /api/projects/{id}/stop (stop worker)
+- Live status consistency & atomic update checks
 """
 
 import pytest
@@ -128,20 +136,38 @@ class TestUpdateProject:
         assert len(resp.json()["upstreams"]) == 1
         assert resp.json()["upstreams"][0]["name"] == "new-up"
 
-    def test_update_forwards(self, auth_client):
+    def test_update_forwards_count(self, auth_client):
+        forwards = [
+            {"from": f"/src/skill-{i}", "to": f"/dst/skill-{i}", "enabled": True}
+            for i in range(5)
+        ]
         resp = auth_client.put("/api/projects/test-project", json={
-            "forwards": [
-                {"from": "/a/b", "to": "/c/d", "enabled": True},
-            ],
+            "forwards": forwards,
         })
         assert resp.status_code == 200
-        fwds = resp.json()["forwards"]
-        assert len(fwds) == 1
+        assert len(resp.json()["forwards"]) == 5
+
+    def test_update_then_get_consistency(self, auth_client):
+        forwards = [
+            {"from": "/x/a", "to": "/y/a", "enabled": True},
+            {"from": "/x/b", "to": "/y/b", "enabled": False},
+        ]
+        put_resp = auth_client.put("/api/projects/test-project", json={
+            "forwards": forwards,
+        })
+        get_resp = auth_client.get("/api/projects/test-project")
+
+        assert put_resp.status_code == 200
+        assert get_resp.status_code == 200
+        assert len(put_resp.json()["forwards"]) == len(get_resp.json()["forwards"])
 
     def test_update_nonexistent_returns_404(self, auth_client):
         resp = auth_client.put("/api/projects/nonexistent-id", json={
-            "git": {"auto_push": True, "branch": "x",
-                    "commit_messages": {"manual": "x", "upstreams": {}}},
+            "git": {
+                "auto_push": True,
+                "branch": "x",
+                "commit_messages": {"manual": "x", "upstreams": {}},
+            },
         })
         assert resp.status_code == 404
 
@@ -150,7 +176,6 @@ class TestDeleteProject:
     """DELETE /api/projects/{id}"""
 
     def test_delete_existing(self, auth_client):
-        # Create a throwaway project
         resp = auth_client.post("/api/projects", json={
             "name": "Disposable",
             "path": "/tmp/disposable",
@@ -160,7 +185,6 @@ class TestDeleteProject:
         resp = auth_client.delete(f"/api/projects/{pid}")
         assert resp.status_code == 204
 
-        # Confirm gone
         resp = auth_client.get(f"/api/projects/{pid}")
         assert resp.status_code == 404
 
@@ -186,8 +210,33 @@ class TestWorkerControl:
         resp = auth_client.post("/api/projects/ghost-id/run")
         assert resp.status_code == 404
 
-    def test_run_then_stop(self, auth_client):
+    def test_run_then_stop_lifecycle(self, auth_client):
         auth_client.post("/api/projects/test-project/run")
         resp = auth_client.post("/api/projects/test-project/stop")
         assert resp.status_code == 200
         assert resp.json()["status"] in ("stopped", "not_running")
+
+    def test_update_while_running_shows_running_status(self, auth_client):
+        auth_client.post("/api/projects/test-project/run")
+
+        resp = auth_client.put("/api/projects/test-project", json={
+            "schedule": {"interval_minutes": 15, "poll_interval_seconds": 60},
+        })
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "running"
+
+        auth_client.post("/api/projects/test-project/stop")
+
+    def test_update_while_idle_shows_idle_status(self, auth_client):
+        auth_client.post("/api/projects/test-project/stop")
+
+        resp = auth_client.put("/api/projects/test-project", json={
+            "schedule": {"interval_minutes": 10, "poll_interval_seconds": 60},
+        })
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "idle"
+
+        # Restore default schedule
+        auth_client.put("/api/projects/test-project", json={
+            "schedule": {"interval_minutes": 5, "poll_interval_seconds": 30},
+        })
