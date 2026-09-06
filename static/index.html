@@ -385,6 +385,26 @@
                                 </div>
 
                                 <div style="display:flex;flex-direction:column;gap:12px;">
+                                    <!-- Toggles Row (Above Payload URL) -->
+                                    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg-input);border-radius:6px;border:1px solid var(--border);">
+                                        <div style="display:flex;align-items:center;gap:6px;">
+                                            <span style="font-size:.74rem;font-weight:500;">Enabled</span>
+                                            <div class="toggle-sm" :class="{ active: activeProject.webhook && activeProject.webhook.enabled }"
+                                                 @click="toggleWebhook()" title="Enable or disable webhook sync for this project"></div>
+                                        </div>
+                                        <div style="height:16px;width:1px;background:var(--border);"></div>
+                                        <div style="display:flex;align-items:center;gap:6px;">
+                                            <span style="font-size:.74rem;font-weight:500;">Tailscale Enable</span>
+                                            <div class="toggle-sm" :class="{ active: tunnel.funnel_active }"
+                                                 @click="toggleTunnel()" title="Start or Stop Tailscale Funnel on your system"></div>
+                                        </div>
+                                    </div>
+
+                                    <div x-show="tunnel.funnel_active && tunnel.domain"
+                                         style="font-size:.68rem;color:var(--text-muted);padding:0 2px;margin-top:-4px;">
+                                        Domain: <span style="color:var(--accent);font-family:'JetBrains Mono',monospace;" x-text="tunnel.domain"></span>
+                                    </div>
+
                                     <!-- URL Field & Copy -->
                                     <div>
                                         <label style="display:block;font-size:.68rem;color:var(--text-muted);margin-bottom:4px;font-weight:600;">PAYLOAD URL</label>
@@ -395,26 +415,6 @@
                                             <button class="btn-outline" style="padding:4px 10px;font-size:.72rem;"
                                                     @click="copyWebhookUrl(activeProject.id)">Copy</button>
                                         </div>
-                                    </div>
-
-                                    <!-- Toggles Row -->
-                                    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg-input);border-radius:6px;border:1px solid var(--border);">
-                                        <div style="display:flex;align-items:center;gap:6px;">
-                                            <span style="font-size:.74rem;font-weight:500;">Enabled</span>
-                                            <div class="toggle-sm" :class="{ active: activeProject.webhook && activeProject.webhook.enabled }"
-                                                 @click="toggleWebhook()" title="Enable or disable webhook sync for this project"></div>
-                                        </div>
-                                        <div style="height:16px;width:1px;background:var(--border);"></div>
-                                        <div style="display:flex;align-items:center;gap:6px;">
-                                            <span style="font-size:.74rem;font-weight:500;">Tailscale Funnel</span>
-                                            <div class="toggle-sm" :class="{ active: tunnel.funnel_active }"
-                                                 @click="toggleTunnel()" title="Start or Stop Tailscale Funnel on your system"></div>
-                                        </div>
-                                    </div>
-
-                                    <div x-show="tunnel.funnel_active && tunnel.domain"
-                                         style="font-size:.68rem;color:var(--text-muted);padding:0 2px;">
-                                        Domain: <span style="color:var(--accent);font-family:'JetBrains Mono',monospace;" x-text="tunnel.domain"></span>
                                     </div>
 
                                     <!-- Secret -->
