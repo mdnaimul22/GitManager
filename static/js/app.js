@@ -148,6 +148,7 @@ document.addEventListener('alpine:init', () => {
                         to: f.to || f.to_path || '',
                         enabled: f.enabled !== false,
                     }));
+                }
                 if (!proj.webhook) {
                     proj.webhook = { enabled: false, secret: '' };
                 }
