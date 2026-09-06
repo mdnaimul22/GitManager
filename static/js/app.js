@@ -61,9 +61,6 @@ document.addEventListener('alpine:init', () => {
             }
             document.documentElement.setAttribute('data-theme', THEMES[this.themeIndex].id);
 
-            // Fetch tunnel status in parallel
-            this.loadTunnelStatus();
-
             // Check auth
             await this.checkAuth();
         },
@@ -75,6 +72,7 @@ document.addEventListener('alpine:init', () => {
                 const data = await res.json();
                 this.authenticated = data.authenticated;
                 if (this.authenticated) {
+                    this.loadTunnelStatus();
                     await this.fetchProjects();
                     if (this.projects.length > 0 && !this.activeProjectId) {
                         await this.selectProject(this.projects[0].id);
@@ -96,6 +94,7 @@ document.addEventListener('alpine:init', () => {
                     this.authenticated = true;
                     this.loginUsername = '';
                     this.loginPassword = '';
+                    this.loadTunnelStatus();
                     await this.fetchProjects();
                     if (this.projects.length > 0) await this.selectProject(this.projects[0].id);
                 } else {

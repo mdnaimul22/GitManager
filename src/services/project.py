@@ -8,6 +8,7 @@ import threading
 from src.config import (
     Settings, setup_logger,
     read_json, write_json, exists, ensure_dir, delete,
+    assert_path_sandboxed,
 )
 from src.helpers import time_now_iso
 from src.schema import (
@@ -144,6 +145,8 @@ def get_project(project_id: str) -> ProjectDetail | None:
 
 def create_project(data: ProjectCreate) -> ProjectMeta:
     """Create a new project with default configs."""
+    safe_path = str(assert_path_sandboxed(data.path))
+
     with _registry_lock:
         project_id = _slugify(data.name)
         now = time_now_iso()
@@ -160,7 +163,7 @@ def create_project(data: ProjectCreate) -> ProjectMeta:
         meta = ProjectMeta(
             id=project_id,
             name=data.name,
-            path=data.path,
+            path=safe_path,
             created_at=now,
             updated_at=now,
         )
@@ -190,6 +193,22 @@ def update_project(project_id: str, data: ProjectUpdate) -> ProjectDetail | None
         meta = next((p for p in projects if p.id == project_id), None)
         if not meta:
             return None
+
+        # Validate path sandboxing for any provided forward rules or upstream paths
+        if data.forwards is not None:
+            for rule in data.forwards:
+                if rule.from_path:
+                    check_from = rule.from_path.replace("{REPO_ROOT}", meta.path)
+                    assert_path_sandboxed(check_from)
+                if rule.to_path:
+                    check_to = rule.to_path.replace("{REPO_ROOT}", meta.path)
+                    assert_path_sandboxed(check_to)
+
+        if data.upstreams is not None:
+            for u in data.upstreams:
+                if u.path:
+                    check_path = u.path.replace("{REPO_ROOT}", meta.path)
+                    assert_path_sandboxed(check_path)
 
         # Update upstream.json
         if data.upstreams is not None:

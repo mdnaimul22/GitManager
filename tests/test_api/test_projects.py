@@ -99,6 +99,30 @@ class TestCreateProject:
         resp = auth_client.post("/api/projects", json={"name": "X"})
         assert resp.status_code == 422
 
+    def test_create_project_rejects_forbidden_system_directory(self, auth_client):
+        resp = auth_client.post("/api/projects", json={
+            "name": "Malicious Etc",
+            "path": "/etc/cron.d",
+        })
+        assert resp.status_code == 400
+        assert "forbidden system directory" in resp.json()["detail"]
+
+    def test_create_project_rejects_sensitive_user_path(self, auth_client):
+        resp = auth_client.post("/api/projects", json={
+            "name": "Malicious SSH",
+            "path": "~/.ssh",
+        })
+        assert resp.status_code == 400
+        assert "sensitive user configuration" in resp.json()["detail"]
+
+    def test_create_project_rejects_root_filesystem(self, auth_client):
+        resp = auth_client.post("/api/projects", json={
+            "name": "Malicious Root",
+            "path": "/",
+        })
+        assert resp.status_code == 400
+        assert "Root filesystem" in resp.json()["detail"]
+
 
 class TestUpdateProject:
     """PUT /api/projects/{id}"""

@@ -4,12 +4,18 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from .paths import PROJECT_ROOT
+from .paths import (
+    PROJECT_ROOT,
+    assert_path_sandboxed,
+    is_path_sandboxed,
+)
 
 
 def _abs(relative_path: str) -> Path:
-    p = Path(relative_path)
-    return p if p.is_absolute() else PROJECT_ROOT / p
+    p = Path(relative_path).expanduser()
+    if p.is_absolute():
+        return assert_path_sandboxed(p)
+    return assert_path_sandboxed(relative_path, base_root=PROJECT_ROOT)
 
 
 def read_text(relative_path: str, encoding: str = "utf-8") -> str:
@@ -75,4 +81,11 @@ def read_from_pos(relative_path: str, pos: int, encoding: str = "utf-8") -> str:
 
 
 def get_abs_path(*parts: str) -> str:
-    return str(PROJECT_ROOT.joinpath(*parts))
+    if not parts:
+        return str(PROJECT_ROOT)
+    first = Path(parts[0]).expanduser()
+    if first.is_absolute():
+        p = Path(*parts).expanduser()
+        return str(assert_path_sandboxed(p))
+    target = PROJECT_ROOT.joinpath(*parts)
+    return str(assert_path_sandboxed(target, base_root=PROJECT_ROOT))

@@ -2,18 +2,20 @@
 System and network endpoints.
 """
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from src.schema import TunnelStatus
 from src.services import get_tunnel_status, toggle_funnel
 from src.config import Settings, setup_logger
+from .auth import require_auth
 
 logger = setup_logger(Settings.LOG_DIR / "router.log", name="gitmanager.routers.system")
 
 router = APIRouter(
     prefix="/api/system",
     tags=["system"],
+    dependencies=[Depends(require_auth)],
 )
 
 

@@ -82,3 +82,30 @@ class TestFileOperations:
 
         delete(str(target_dir))
         assert not exists(str(target_dir))
+
+    def test_file_operations_reject_path_traversal(self):
+        with pytest.raises(ValueError, match="escapes sandbox base"):
+            read_text("../../../etc/passwd")
+
+        with pytest.raises(ValueError, match="escapes sandbox base"):
+            write_text("../../../tmp/malicious.txt", "payload")
+
+        with pytest.raises(ValueError, match="escapes sandbox base"):
+            get_abs_path("../../../etc")
+
+    def test_file_operations_reject_forbidden_system_paths(self):
+        with pytest.raises(ValueError, match="forbidden system directory"):
+            read_text("/etc/passwd")
+
+        with pytest.raises(ValueError, match="forbidden system directory"):
+            write_text("/etc/malicious.txt", "payload")
+
+        with pytest.raises(ValueError, match="forbidden system directory"):
+            delete("/etc/some_file")
+
+    def test_file_operations_reject_sensitive_user_paths(self):
+        with pytest.raises(ValueError, match="sensitive user configuration"):
+            read_text("~/.ssh/id_rsa")
+
+        with pytest.raises(ValueError, match="sensitive user configuration"):
+            write_text("~/.bashrc", "# hacked")

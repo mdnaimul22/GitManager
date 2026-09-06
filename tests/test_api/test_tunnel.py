@@ -3,19 +3,23 @@ API tests for system tunnel router.
 """
 
 from unittest.mock import patch
-from fastapi.testclient import TestClient
 
-from main import app
 from src.schema import TunnelStatus
-
-client = TestClient(app)
 
 
 class TestSystemTunnelAPI:
     """Test suite for /api/system/tunnel endpoints."""
 
+    def test_unauthenticated_access_denied(self, client):
+        """Unauthenticated requests must return 401 Unauthorized."""
+        resp_get = client.get("/api/system/tunnel")
+        assert resp_get.status_code == 401
+
+        resp_post = client.post("/api/system/tunnel/funnel", json={"enable": True})
+        assert resp_post.status_code == 401
+
     @patch("src.routers.system.get_tunnel_status")
-    def test_get_tunnel_status_endpoint(self, mock_get_status):
+    def test_get_tunnel_status_endpoint(self, mock_get_status, auth_client):
         # Arrange
         mock_get_status.return_value = TunnelStatus(
             installed=True,
@@ -28,7 +32,7 @@ class TestSystemTunnelAPI:
         )
 
         # Act
-        resp = client.get("/api/system/tunnel")
+        resp = auth_client.get("/api/system/tunnel")
 
         # Assert
         assert resp.status_code == 200
@@ -39,7 +43,7 @@ class TestSystemTunnelAPI:
 
     @patch("src.routers.system.toggle_funnel")
     @patch("src.routers.system.get_tunnel_status")
-    def test_toggle_funnel_success(self, mock_get_status, mock_toggle):
+    def test_toggle_funnel_success(self, mock_get_status, mock_toggle, auth_client):
         # Arrange
         mock_toggle.return_value = (True, "Funnel updated")
         mock_get_status.return_value = TunnelStatus(
@@ -52,7 +56,7 @@ class TestSystemTunnelAPI:
         )
 
         # Act
-        resp = client.post("/api/system/tunnel/funnel", json={"enable": True})
+        resp = auth_client.post("/api/system/tunnel/funnel", json={"enable": True})
 
         # Assert
         assert resp.status_code == 200
@@ -61,12 +65,12 @@ class TestSystemTunnelAPI:
         assert "Funnel updated" in data["message"]
 
     @patch("src.routers.system.toggle_funnel")
-    def test_toggle_funnel_failure(self, mock_toggle):
+    def test_toggle_funnel_failure(self, mock_toggle, auth_client):
         # Arrange
         mock_toggle.return_value = (False, "Permission denied")
 
         # Act
-        resp = client.post("/api/system/tunnel/funnel", json={"enable": True})
+        resp = auth_client.post("/api/system/tunnel/funnel", json={"enable": True})
 
         # Assert
         assert resp.status_code == 400
