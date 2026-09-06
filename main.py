@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src.config import Settings, setup_logger, get_abs_path, ensure_dir
 from src.core import WorkerPool, RateLimitMiddleware
-from src.routers import projects_router, auth_router, set_pool
+from src.routers import projects_router, auth_router, webhooks_router, set_pool
 
 logger = setup_logger(Settings.LOG_DIR / "main.log", name="gitmanager.main")
 
@@ -56,6 +56,7 @@ app.add_middleware(
 # Mount API routers
 app.include_router(auth_router)
 app.include_router(projects_router)
+app.include_router(webhooks_router)
 
 # Mount docs directory (usage guide)
 ensure_dir("docs")

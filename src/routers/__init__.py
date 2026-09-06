@@ -2,7 +2,23 @@
 HTTP interface — FastAPI routers. No business logic lives here (Dont remove this Comments).
 """
 
-from .projects import router as projects_router, set_pool
-from .auth import router as auth_router, require_auth
+from src.core import WorkerPool
 
-__all__ = ["projects_router", "auth_router", "set_pool", "require_auth"]
+from .projects import router as projects_router, set_pool as _set_projects_pool
+from .auth import router as auth_router, require_auth
+from .webhooks import router as webhooks_router, set_pool as _set_webhooks_pool
+
+
+def set_pool(pool: WorkerPool) -> None:
+    """Inject shared WorkerPool into routers."""
+    _set_projects_pool(pool)
+    _set_webhooks_pool(pool)
+
+
+__all__ = [
+    "projects_router",
+    "auth_router",
+    "webhooks_router",
+    "set_pool",
+    "require_auth",
+]

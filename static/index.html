@@ -437,6 +437,35 @@
                                        placeholder="chore: manual update of {count} file(s) [{datetime}]">
                             </div>
                         </div>
+
+                        <!-- Webhook Instant Sync -->
+                        <div class="section">
+                            <div class="section-title">
+                                Webhook (Instant Sync)
+                                <span class="cnt" style="font-size:.68rem;font-weight:normal;color:var(--text-muted);margin-left:6px;">GitHub/GitLab push trigger</span>
+                            </div>
+                            <div class="git-bar" style="margin-bottom:8px;">
+                                <span class="fl">URL</span>
+                                <input :value="getWebhookUrl(activeProject.id)" readonly
+                                       style="font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--accent);"
+                                       @click="$event.target.select()">
+                                <button class="btn-outline" style="padding:4px 8px;font-size:.72rem;"
+                                        @click="copyWebhookUrl(activeProject.id)">Copy</button>
+                            </div>
+                            <div class="entry-row" style="padding:4px 8px;gap:12px;">
+                                <div style="display:flex;align-items:center;gap:6px;">
+                                    <span class="fl">Enabled</span>
+                                    <div class="toggle-sm" :class="{ active: activeProject.webhook && activeProject.webhook.enabled }"
+                                         @click="toggleWebhook()"></div>
+                                </div>
+                                <div class="sep"></div>
+                                <div class="fi" style="flex:1;">
+                                    <span class="fl">Secret</span>
+                                    <input x-model="activeProject.webhook.secret" placeholder="Optional secret for HMAC-SHA256 verification"
+                                           style="font-size:.76rem;">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </template>

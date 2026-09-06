@@ -148,6 +148,8 @@ document.addEventListener('alpine:init', () => {
                         to: f.to || f.to_path || '',
                         enabled: f.enabled !== false,
                     }));
+                if (!proj.webhook) {
+                    proj.webhook = { enabled: false, secret: '' };
                 }
                 this.activeProject = proj;
                 this.activeProjectId = id;
@@ -165,6 +167,7 @@ document.addEventListener('alpine:init', () => {
                     })),
                     git: this.activeProject.git,
                     schedule: this.activeProject.schedule,
+                    webhook: this.activeProject.webhook,
                 };
                 const result = await this.api('PUT', `/${this.activeProjectId}`, payload);
                 if (result.forwards) {
@@ -173,6 +176,9 @@ document.addEventListener('alpine:init', () => {
                         to: f.to || f.to_path || '',
                         enabled: f.enabled !== false,
                     }));
+                }
+                if (!result.webhook) {
+                    result.webhook = { enabled: false, secret: '' };
                 }
                 this.activeProject = result;
                 this.showToast('Saved');
@@ -217,7 +223,9 @@ document.addEventListener('alpine:init', () => {
         // ── Upstream / Forward Management ─────────────────────────────
         addUpstream() {
             if (!this.activeProject) return;
-            this.activeProject.upstreams.push({ name: '', path: '', url: '', branch: 'main', pull: true });
+            this.activeProject.upstreams.push({
+                name: '', path: '', url: '', branch: 'main', pull: true, sparse: true, blobless: true,
+            });
         },
         removeUpstream(i) { this.activeProject.upstreams.splice(i, 1); },
         addForward() {
@@ -225,6 +233,28 @@ document.addEventListener('alpine:init', () => {
             this.activeProject.forwards.push({ from: '', to: '', enabled: true });
         },
         removeForward(i) { this.activeProject.forwards.splice(i, 1); },
+
+        // ── Webhook Helpers ───────────────────────────────────────────
+        getWebhookUrl(id) {
+            return `${window.location.origin}/api/webhooks/${id}`;
+        },
+        toggleWebhook() {
+            if (!this.activeProject) return;
+            if (!this.activeProject.webhook) this.activeProject.webhook = { enabled: false, secret: '' };
+            this.activeProject.webhook.enabled = !this.activeProject.webhook.enabled;
+        },
+        copyWebhookUrl(id) {
+            const url = this.getWebhookUrl(id);
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(url).then(() => {
+                    this.showToast('Webhook URL copied');
+                }).catch(() => {
+                    this.showToast('Copied');
+                });
+            } else {
+                this.showToast('Copied');
+            }
+        },
 
         // ── Grouped Forwards (by upstream name) ───────────────────────
         get groupedForwards() {
@@ -246,7 +276,6 @@ document.addEventListener('alpine:init', () => {
             });
             return groups;
         },
-
 
         // ── Helpers ───────────────────────────────────────────────────
         maskPath(p) { return (p || '').replace(/^\/home\/[^/]+\//, '{~}/'); },

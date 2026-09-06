@@ -59,3 +59,24 @@ class TestWorkerPool:
             pool.stop_all()
         finally:
             pool.stop_all()
+
+    def test_trigger_now_running_worker(self):
+        pool = WorkerPool()
+        proj = ProjectMeta(
+            id="pool-trigger-proj",
+            name="Pool Trigger Project",
+            path="/tmp/pool-trigger-proj",
+        )
+        try:
+            pool.start(proj)
+            assert pool.is_running(proj.id) is True
+
+            # Trigger now should return True
+            triggered = pool.trigger_now(proj.id)
+            assert triggered is True
+        finally:
+            pool.stop_all()
+
+    def test_trigger_now_nonexistent_project_returns_false(self):
+        pool = WorkerPool()
+        assert pool.trigger_now("completely-ghost-project") is False

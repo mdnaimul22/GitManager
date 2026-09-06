@@ -47,7 +47,7 @@ def sync_job(watcher: ConfigWatcher) -> None:
 
     # Step 1 — Pull upstream repositories
     logger.info(f"📥 [{project_id}] STEP 1 — Pulling upstream repositories")
-    pulls, updated_upstreams = pull_upstreams(watcher.upstreams)
+    pulls, updated_upstreams = pull_upstreams(watcher.upstreams, forwards=watcher.forwards)
 
     # Step 2 — Forward skill paths
     logger.info(f"📁 [{project_id}] STEP 2 — Forwarding skill paths")

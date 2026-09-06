@@ -17,6 +17,8 @@ class UpstreamEntry(BaseModel):
     url: str = ""
     branch: str = "main"
     pull: bool = True
+    sparse: bool = True
+    blobless: bool = True
 
 
 # ── Path Forwarding ───────────────────────────────────────────────────────────
@@ -54,6 +56,12 @@ class ScheduleConfig(BaseModel):
     poll_interval_seconds: int = 60
 
 
+class WebhookConfig(BaseModel):
+    """Webhook configuration for instant sync."""
+    enabled: bool = False
+    secret: str = ""
+
+
 class LoggingConfig(BaseModel):
     """Logging configuration."""
     level: str = "INFO"
@@ -65,6 +73,7 @@ class AutomationConfig(BaseModel):
     schedule: ScheduleConfig = Field(default_factory=ScheduleConfig)
     git: GitConfig = Field(default_factory=GitConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    webhook: WebhookConfig = Field(default_factory=WebhookConfig)
 
 
 # ── Sync Result ───────────────────────────────────────────────────────────────
@@ -107,6 +116,7 @@ class ProjectDetail(BaseModel):
     forwards: list[ForwardRule] = Field(default_factory=list)
     git: GitConfig = Field(default_factory=GitConfig)
     schedule: ScheduleConfig = Field(default_factory=ScheduleConfig)
+    webhook: WebhookConfig = Field(default_factory=WebhookConfig)
     last_result: Optional[SyncResult] = None
 
 
@@ -122,6 +132,7 @@ class ProjectUpdate(BaseModel):
     forwards: Optional[list[ForwardRule]] = None
     git: Optional[GitConfig] = None
     schedule: Optional[ScheduleConfig] = None
+    webhook: Optional[WebhookConfig] = None
 
 
 # ── Authentication ────────────────────────────────────────────────────────────

@@ -137,6 +137,7 @@ def get_project(project_id: str) -> ProjectDetail | None:
         forwards=forwards,
         git=automation.git,
         schedule=automation.schedule,
+        webhook=automation.webhook,
     )
 
 
@@ -203,12 +204,14 @@ def update_project(project_id: str, data: ProjectUpdate) -> ProjectDetail | None
             })
 
         # Update automation.json
-        if data.git is not None or data.schedule is not None:
+        if data.git is not None or data.schedule is not None or data.webhook is not None:
             current = _read_project_json(project_id, Settings.AUTOMATION_FILE)
             if data.schedule is not None:
                 current["schedule"] = data.schedule.model_dump()
             if data.git is not None:
                 current["git"] = data.git.model_dump()
+            if data.webhook is not None:
+                current["webhook"] = data.webhook.model_dump()
             _write_project_json(project_id, Settings.AUTOMATION_FILE, current)
 
         # Update registry timestamp
