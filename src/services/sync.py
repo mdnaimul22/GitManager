@@ -2,10 +2,9 @@
 Sync orchestrator — coordinates the full upstream sync pipeline.
 """
 
-from datetime import datetime
-
 from src.config import Settings, setup_logger
 from src.core import ConfigWatcher
+from src.helpers import time_now_iso, time_now_formatted
 from src.providers import run_git, get_status
 
 from .upstream import pull_upstreams
@@ -25,7 +24,7 @@ def sync_job(watcher: ConfigWatcher) -> None:
       3. Commit & push
     """
     sep = "─" * 62
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = time_now_formatted("%Y-%m-%d %H:%M:%S")
     git_cfg = watcher.automation.git
     branch = git_cfg.branch
     repo_root = watcher.project_path
@@ -65,7 +64,7 @@ def sync_job(watcher: ConfigWatcher) -> None:
     # This is critical: if we skip this, git pull on next sync restores ghosts
     # from remote because the deletion was staged but never committed/pushed.
     if removed:
-        orphan_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+        orphan_time = time_now_formatted("%Y-%m-%d %H:%M")
         orphan_msg = f"chore: remove {len(removed)} orphaned skill(s) [{orphan_time}]"
         run_git(["commit", "-m", orphan_msg], repo_root, logger)
         if git_cfg.auto_push:
@@ -73,20 +72,22 @@ def sync_job(watcher: ConfigWatcher) -> None:
 
     # Step 3 — Commit & push
     logger.info(f"🚀 [{project_id}] STEP 3 — Committing & pushing to own repo")
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+    current_time = time_now_formatted("%Y-%m-%d %H:%M")
 
     ok, status_out = get_status(repo_root, logger)
 
     upstream_changes: dict[str, list[str]] = {}
+    manual_changes: list[str] = []
 
     if ok and status_out.strip():
-        upstream_changes = classify_changes(
+        upstream_changes, manual_changes = classify_changes(
             status_out, watcher.forwards, watcher.upstreams, repo_root
         )
 
     push_ok = commit_and_push(
         repo_root=repo_root,
         upstream_changes=upstream_changes,
+        manual_changes=manual_changes,
         branch=branch,
         current_time=current_time,
         commit_messages=git_cfg.commit_messages,
@@ -98,7 +99,7 @@ def sync_job(watcher: ConfigWatcher) -> None:
     update_project_status(
         project_id,
         status="idle" if push_ok else "error",
-        last_sync=datetime.now().isoformat(),
+        last_sync=time_now_iso(),
     )
 
     # Summary

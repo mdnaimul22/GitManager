@@ -506,3 +506,136 @@ class TestSmartPathResolution:
         assert resolved["branch"] == "main"
         assert resolved["messages"] == "chore: {count} files"
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Manual Changes Auto-Commit & Push
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestManualChangesCommit:
+    """Verify manual (unmanaged) file changes are auto-classified and committed."""
+
+    def test_classify_changes_separates_upstream_and_manual(self):
+        from src.schema.models import ForwardRule, UpstreamEntry
+        from src.services.commit import classify_changes
+
+        repo_root = "/home/user/project"
+        upstreams = [
+            UpstreamEntry(name="anthropic", path=".anthropics-skills", url="https://github.com/a/b.git")
+        ]
+        forwards = [
+            ForwardRule(**{"from": ".anthropics-skills/skills", "to": "skills/storage/anthropic", "enabled": True})
+        ]
+
+        status_output = (
+            " M skills/storage/anthropic/pdf/SKILL.md\n"
+            "?? skills/storage/my_skills/custom-tool/SKILL.md\n"
+            " M .agents/rules/coding-standards.md\n"
+        )
+
+        upstream_changes, manual_changes = classify_changes(
+            status_output, forwards, upstreams, repo_root
+        )
+
+        assert "anthropic" in upstream_changes
+        assert upstream_changes["anthropic"] == ["skills/storage/anthropic/pdf/SKILL.md"]
+        assert len(manual_changes) == 2
+        assert "skills/storage/my_skills/custom-tool/SKILL.md" in manual_changes
+        assert ".agents/rules/coding-standards.md" in manual_changes
+
+    def test_commit_and_push_manual_changes(self, tmp_path):
+        import subprocess
+        from src.schema.models import CommitMessages
+        from src.services.commit import commit_and_push
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        subprocess.run(["git", "init"], cwd=str(repo), capture_output=True)
+        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=str(repo), capture_output=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=str(repo), capture_output=True)
+
+        # Create an initial commit
+        (repo / "README.md").write_text("# Test Repo")
+        subprocess.run(["git", "add", "."], cwd=str(repo), capture_output=True)
+        subprocess.run(["git", "commit", "-m", "init"], cwd=str(repo), capture_output=True)
+
+        # Create a manual file
+        manual_file = repo / "skills" / "my_skills" / "SKILL.md"
+        manual_file.parent.mkdir(parents=True)
+        manual_file.write_text("my manual skill")
+
+        messages = CommitMessages(
+            manual="chore: manual update of {count} file(s) [{datetime}]",
+            upstreams={"default": "sync: update from {upstream_name} [{datetime}]"}
+        )
+
+        success = commit_and_push(
+            repo_root=str(repo),
+            upstream_changes={},
+            manual_changes=["skills/my_skills/SKILL.md"],
+            branch="main",
+            current_time="2026-09-07 00:00",
+            commit_messages=messages,
+            auto_push=False,
+        )
+
+        assert success is True
+
+        # Verify git log
+        log_res = subprocess.run(
+            ["git", "log", "-n", "1", "--format=%s"],
+            cwd=str(repo), capture_output=True, text=True
+        )
+        assert "chore: manual update of 1 file(s) [2026-09-07 00:00]" in log_res.stdout
+
+    def test_commit_and_push_both_upstream_and_manual(self, tmp_path):
+        import subprocess
+        from src.schema.models import CommitMessages
+        from src.services.commit import commit_and_push
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        subprocess.run(["git", "init"], cwd=str(repo), capture_output=True)
+        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=str(repo), capture_output=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=str(repo), capture_output=True)
+
+        # Initial commit
+        (repo / "README.md").write_text("# Test Repo")
+        subprocess.run(["git", "add", "."], cwd=str(repo), capture_output=True)
+        subprocess.run(["git", "commit", "-m", "init"], cwd=str(repo), capture_output=True)
+
+        # Create upstream file and manual file
+        up_file = repo / "skills" / "storage" / "anthropic" / "a.txt"
+        up_file.parent.mkdir(parents=True)
+        up_file.write_text("upstream file")
+
+        manual_file = repo / "skills" / "storage" / "my_skills" / "b.txt"
+        manual_file.parent.mkdir(parents=True)
+        manual_file.write_text("manual file")
+
+        messages = CommitMessages(
+            manual="chore: manual update of {count} file(s) [{datetime}]",
+            upstreams={"anthropic": "sync: auto-update from {upstream_name} [{datetime}]"}
+        )
+
+        success = commit_and_push(
+            repo_root=str(repo),
+            upstream_changes={"anthropic": ["skills/storage/anthropic/a.txt"]},
+            manual_changes=["skills/storage/my_skills/b.txt"],
+            branch="main",
+            current_time="2026-09-07 00:00",
+            commit_messages=messages,
+            auto_push=False,
+        )
+
+        assert success is True
+
+        # Verify git log has both commits
+        log_res = subprocess.run(
+            ["git", "log", "-n", "2", "--format=%s"],
+            cwd=str(repo), capture_output=True, text=True
+        )
+        logs = log_res.stdout.strip().splitlines()
+        assert "chore: manual update of 1 file(s) [2026-09-07 00:00]" in logs[0]
+        assert "sync: auto-update from anthropic [2026-09-07 00:00]" in logs[1]
+
+

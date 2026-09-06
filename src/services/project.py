@@ -4,12 +4,12 @@ Project registry CRUD — manages projects.json and per-project config directori
 
 import re
 import threading
-from datetime import datetime
 
 from src.config import (
     Settings, setup_logger,
     read_json, write_json, exists, ensure_dir, delete,
 )
+from src.helpers import time_now_iso
 from src.schema import (
     ProjectMeta, ProjectDetail, ProjectCreate, ProjectUpdate,
     UpstreamEntry, ForwardRule, GitConfig, ScheduleConfig, AutomationConfig,
@@ -145,7 +145,7 @@ def create_project(data: ProjectCreate) -> ProjectMeta:
     """Create a new project with default configs."""
     with _registry_lock:
         project_id = _slugify(data.name)
-        now = datetime.now().isoformat()
+        now = time_now_iso()
 
         # Ensure unique ID
         existing = _load_registry()
@@ -212,7 +212,7 @@ def update_project(project_id: str, data: ProjectUpdate) -> ProjectDetail | None
             _write_project_json(project_id, Settings.AUTOMATION_FILE, current)
 
         # Update registry timestamp
-        meta.updated_at = datetime.now().isoformat()
+        meta.updated_at = time_now_iso()
         _save_registry(projects)
 
         logger.info(f"Updated project: {project_id}")
