@@ -39,6 +39,17 @@ document.addEventListener('alpine:init', () => {
         themes: THEMES,
         get currentThemeName() { return THEMES[this.themeIndex].name; },
 
+        // ── Tunnel State ──────────────────────────────────────────────
+        tunnel: {
+            installed: false,
+            running: false,
+            funnel_active: false,
+            domain: null,
+            funnel_url: null,
+            port: 8000,
+            error: null,
+        },
+
         // ── Lifecycle ─────────────────────────────────────────────────
         async init() {
             // Restore theme
@@ -48,6 +59,9 @@ document.addEventListener('alpine:init', () => {
                 if (idx >= 0) this.themeIndex = idx;
             }
             document.documentElement.setAttribute('data-theme', THEMES[this.themeIndex].id);
+
+            // Fetch tunnel status in parallel
+            this.loadTunnelStatus();
 
             // Check auth
             await this.checkAuth();
@@ -150,7 +164,10 @@ document.addEventListener('alpine:init', () => {
                     }));
                 }
                 if (!proj.webhook) {
-                    proj.webhook = { enabled: false, secret: '' };
+                    proj.webhook = { enabled: false, secret: '', use_tunnel: this.tunnel.funnel_active, tunnel_url: '' };
+                } else {
+                    if (proj.webhook.use_tunnel === undefined) proj.webhook.use_tunnel = this.tunnel.funnel_active;
+                    if (proj.webhook.tunnel_url === undefined) proj.webhook.tunnel_url = '';
                 }
                 this.activeProject = proj;
                 this.activeProjectId = id;
@@ -235,14 +252,49 @@ document.addEventListener('alpine:init', () => {
         },
         removeForward(i) { this.activeProject.forwards.splice(i, 1); },
 
-        // ── Webhook Helpers ───────────────────────────────────────────
+        // ── Webhook & Tunnel Helpers ─────────────────────────────────
+        async loadTunnelStatus() {
+            try {
+                const res = await fetch('/api/system/tunnel');
+                if (res.ok) {
+                    this.tunnel = await res.json();
+                }
+            } catch (e) {
+                console.warn('Failed to load tunnel status:', e);
+            }
+        },
+        async refreshTunnel() {
+            await this.loadTunnelStatus();
+            if (this.tunnel.funnel_active) {
+                this.showToast(`Tailscale Funnel Active: ${this.tunnel.domain}`);
+            } else if (this.tunnel.running) {
+                this.showToast('Tailscale is running, but Funnel is inactive');
+            } else {
+                this.showToast('Tailscale daemon is not active');
+            }
+        },
         getWebhookUrl(id) {
+            if (!id) return '';
+            const useTunnel = this.activeProject?.webhook?.use_tunnel;
+            const customUrl = this.activeProject?.webhook?.tunnel_url;
+            if (useTunnel) {
+                const base = customUrl || this.tunnel.funnel_url || (this.tunnel.domain ? `https://${this.tunnel.domain}` : window.location.origin);
+                return `${base.replace(/\/+$/, '')}/api/webhooks/${id}`;
+            }
             return `${window.location.origin}/api/webhooks/${id}`;
         },
         toggleWebhook() {
             if (!this.activeProject) return;
-            if (!this.activeProject.webhook) this.activeProject.webhook = { enabled: false, secret: '' };
+            if (!this.activeProject.webhook) this.activeProject.webhook = { enabled: false, secret: '', use_tunnel: false, tunnel_url: '' };
             this.activeProject.webhook.enabled = !this.activeProject.webhook.enabled;
+        },
+        toggleTunnel() {
+            if (!this.activeProject) return;
+            if (!this.activeProject.webhook) this.activeProject.webhook = { enabled: false, secret: '', use_tunnel: false, tunnel_url: '' };
+            this.activeProject.webhook.use_tunnel = !this.activeProject.webhook.use_tunnel;
+            if (this.activeProject.webhook.use_tunnel && !this.tunnel.funnel_active) {
+                this.loadTunnelStatus();
+            }
         },
         copyWebhookUrl(id) {
             const url = this.getWebhookUrl(id);

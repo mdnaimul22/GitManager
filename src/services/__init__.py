@@ -11,6 +11,7 @@ from .project import (
     list_projects, get_project, create_project,
     update_project, delete_project, update_project_status,
 )
+from .tunnel import get_tunnel_status, toggle_funnel
 
 __all__ = [
     "sync_job",
@@ -28,4 +29,6 @@ __all__ = [
     "update_project",
     "delete_project",
     "update_project_status",
+    "get_tunnel_status",
+    "toggle_funnel",
 ]

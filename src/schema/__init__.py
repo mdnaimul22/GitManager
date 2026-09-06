@@ -17,6 +17,7 @@ from .models import (
     ProjectCreate,
     ProjectUpdate,
     LoginRequest,
+    TunnelStatus,
 )
 
 __all__ = [
@@ -34,4 +35,5 @@ __all__ = [
     "ProjectCreate",
     "ProjectUpdate",
     "LoginRequest",
+    "TunnelStatus",
 ]

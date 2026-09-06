@@ -60,6 +60,8 @@ class WebhookConfig(BaseModel):
     """Webhook configuration for instant sync."""
     enabled: bool = False
     secret: str = ""
+    use_tunnel: bool = False
+    tunnel_url: str = ""
 
 
 class LoggingConfig(BaseModel):
@@ -141,3 +143,16 @@ class LoginRequest(BaseModel):
     """API input for login."""
     username: str
     password: str
+
+
+# ── Tunnel / System ───────────────────────────────────────────────────────────
+
+class TunnelStatus(BaseModel):
+    """Tailscale / tunnel connection status."""
+    installed: bool = False
+    running: bool = False
+    funnel_active: bool = False
+    domain: Optional[str] = None
+    funnel_url: Optional[str] = None
+    port: int = 8000
+    error: Optional[str] = None
