@@ -277,9 +277,9 @@ document.addEventListener('alpine:init', () => {
         },
         getWebhookUrl(id) {
             if (!id) return '';
-            const useTunnel = this.activeProject?.webhook?.use_tunnel;
+            const useTunnel = (this.activeProject?.webhook?.use_tunnel ?? true) && this.tunnel?.funnel_active;
             const customUrl = this.activeProject?.webhook?.tunnel_url;
-            if (useTunnel) {
+            if (useTunnel || customUrl) {
                 const base = customUrl || this.tunnel.funnel_url || (this.tunnel.domain ? `https://${this.tunnel.domain}` : window.location.origin);
                 return `${base.replace(/\/+$/, '')}/api/webhooks/${id}`;
             }
@@ -290,12 +290,37 @@ document.addEventListener('alpine:init', () => {
             if (!this.activeProject.webhook) this.activeProject.webhook = { enabled: false, secret: '', use_tunnel: false, tunnel_url: '' };
             this.activeProject.webhook.enabled = !this.activeProject.webhook.enabled;
         },
-        toggleTunnel() {
+        async toggleTunnel() {
             if (!this.activeProject) return;
             if (!this.activeProject.webhook) this.activeProject.webhook = { enabled: false, secret: '', use_tunnel: false, tunnel_url: '' };
-            this.activeProject.webhook.use_tunnel = !this.activeProject.webhook.use_tunnel;
-            if (this.activeProject.webhook.use_tunnel && !this.tunnel.funnel_active) {
-                this.loadTunnelStatus();
+
+            const shouldEnable = !this.tunnel.funnel_active;
+            this.showToast(shouldEnable ? 'Starting Tailscale Funnel...' : 'Stopping Tailscale Funnel...');
+            try {
+                const res = await fetch('/api/system/tunnel/funnel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enable: shouldEnable }),
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    if (data.tunnel) {
+                        this.tunnel = data.tunnel;
+                    } else {
+                        await this.loadTunnelStatus();
+                    }
+                    this.activeProject.webhook.use_tunnel = this.tunnel.funnel_active;
+                    if (this.tunnel.funnel_active) {
+                        this.showToast(`Tailscale Funnel Active: ${this.tunnel.domain}`);
+                    } else {
+                        this.showToast('Tailscale Funnel Stopped');
+                    }
+                } else {
+                    this.showToast(data.detail || 'Failed to toggle Funnel');
+                }
+            } catch (e) {
+                console.error('Toggle tunnel error:', e);
+                this.showToast('Network error toggling Funnel');
             }
         },
         copyWebhookUrl(id) {

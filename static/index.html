@@ -375,14 +375,14 @@
                                     <div>
                                         <template x-if="tunnel.funnel_active">
                                             <span class="badge badge-idle" style="font-size:.62rem;cursor:pointer;background:rgba(34,197,94,0.12);color:var(--accent);"
-                                                  @click="refreshTunnel()" title="Tailscale Funnel Active (Click to refresh)">
+                                                  @click="toggleTunnel()" title="Tailscale Funnel is Active (Click to Stop)">
                                                 🟢 Funnel Active
                                             </span>
                                         </template>
-                                        <template x-if="tunnel.installed && !tunnel.funnel_active">
+                                        <template x-if="!tunnel.funnel_active">
                                             <span class="badge badge-paused" style="font-size:.62rem;cursor:pointer;"
-                                                  @click="refreshTunnel()" title="Funnel Inactive (Click to refresh)">
-                                                ⚪ Funnel Inactive
+                                                  @click="toggleTunnel()" title="Tailscale Funnel is Off (Click to Start)">
+                                                ⚪ Funnel Off
                                             </span>
                                         </template>
                                     </div>
@@ -406,19 +406,23 @@
                                         <div style="display:flex;align-items:center;gap:6px;">
                                             <span style="font-size:.74rem;font-weight:500;">Enabled</span>
                                             <div class="toggle-sm" :class="{ active: activeProject.webhook && activeProject.webhook.enabled }"
-                                                 @click="toggleWebhook()"></div>
+                                                 @click="toggleWebhook()" title="Enable or disable webhook sync for this project"></div>
                                         </div>
                                         <div style="height:16px;width:1px;background:var(--border);"></div>
                                         <div style="display:flex;align-items:center;gap:6px;">
-                                            <span style="font-size:.74rem;font-weight:500;">Tailscale</span>
-                                            <div class="toggle-sm" :class="{ active: activeProject.webhook && activeProject.webhook.use_tunnel }"
-                                                 @click="toggleTunnel()"></div>
+                                            <span style="font-size:.74rem;font-weight:500;">Tailscale Funnel</span>
+                                            <div class="toggle-sm" :class="{ active: tunnel.funnel_active }"
+                                                 @click="toggleTunnel()" title="Start or Stop Tailscale Funnel on your system"></div>
                                         </div>
                                     </div>
 
-                                    <div x-show="activeProject.webhook && activeProject.webhook.use_tunnel && tunnel.domain"
+                                    <div x-show="tunnel.funnel_active && tunnel.domain"
                                          style="font-size:.68rem;color:var(--text-muted);padding:0 2px;">
                                         Domain: <span style="color:var(--accent);font-family:'JetBrains Mono',monospace;" x-text="tunnel.domain"></span>
+                                    </div>
+                                    <div x-show="!tunnel.funnel_active"
+                                         style="font-size:.68rem;color:var(--text-muted);padding:0 2px;">
+                                        Localhost only (Click toggle to start Funnel)
                                     </div>
 
                                     <!-- Secret -->

@@ -97,6 +97,8 @@ def toggle_funnel(enable: bool, port: Optional[int] = None) -> tuple[bool, str]:
     else:
         logger.info("Disabling Tailscale Funnel ...")
         ok, msg = run_tailscale_cmd(["funnel", "--https=443", "off"])
+        if not ok:
+            ok, msg = run_tailscale_cmd(["funnel", "reset"])
 
     if ok:
         logger.info(f"Tailscale Funnel toggle successful: {msg}")
