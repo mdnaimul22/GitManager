@@ -355,7 +355,7 @@
                         <!-- Webhook Popover Dropdown Button -->
                         <div class="dropdown-anchor" @click.outside="showWebhookMenu = false">
                             <button class="btn-outline" style="display:flex;align-items:center;gap:6px;"
-                                    @click="showWebhookMenu = !showWebhookMenu" title="Configure Webhook / Instant Sync">
+                                    @click="showWebhookMenu = !showWebhookMenu" title="Configure Webhook">
                                 <span>Webhook</span>
                                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;" :style="showWebhookMenu ? 'transform:rotate(180deg)' : ''">
                                     <polyline points="6 9 12 15 18 9"></polyline>
@@ -367,7 +367,6 @@
                                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);">
                                     <div style="display:flex;align-items:center;gap:6px;">
                                         <strong style="font-size:.82rem;color:var(--text-1);">Webhook Settings</strong>
-                                        <span style="font-size:.66rem;color:var(--text-muted);">(Instant Sync)</span>
                                     </div>
                                     <div>
                                         <template x-if="tunnel.funnel_active">
@@ -416,10 +415,6 @@
                                     <div x-show="tunnel.funnel_active && tunnel.domain"
                                          style="font-size:.68rem;color:var(--text-muted);padding:0 2px;">
                                         Domain: <span style="color:var(--accent);font-family:'JetBrains Mono',monospace;" x-text="tunnel.domain"></span>
-                                    </div>
-                                    <div x-show="!tunnel.funnel_active"
-                                         style="font-size:.68rem;color:var(--text-muted);padding:0 2px;">
-                                        Localhost only (Click toggle to start Funnel)
                                     </div>
 
                                     <!-- Secret -->
