@@ -32,6 +32,7 @@ document.addEventListener('alpine:init', () => {
         activeProject: null,
         loading: false,
         showAddProject: false,
+        showWebhookMenu: false,
         newProject: { name: '', path: '' },
 
         // ── Theme State ───────────────────────────────────────────────
@@ -171,6 +172,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 this.activeProject = proj;
                 this.activeProjectId = id;
+                this.showWebhookMenu = false;
             } catch (e) { console.error('Load project:', e); }
             this.loading = false;
         },

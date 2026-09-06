@@ -352,6 +352,90 @@
                             </svg>
                         </a>
                         <div class="spacer"></div>
+                        <!-- Webhook Popover Dropdown Button -->
+                        <div class="dropdown-anchor" @click.outside="showWebhookMenu = false">
+                            <button class="btn-outline" style="position:relative;display:flex;align-items:center;gap:6px;"
+                                    @click="showWebhookMenu = !showWebhookMenu" title="Configure Webhook / Instant Sync">
+                                <span>Webhook</span>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;" :style="showWebhookMenu ? 'transform:rotate(180deg)' : ''">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                                <span class="webhook-signal"
+                                      x-show="activeProject && activeProject.webhook && activeProject.webhook.enabled"
+                                      title="Webhook Active"></span>
+                            </button>
+
+                            <!-- Dropdown Card -->
+                            <div class="dropdown-menu-card" x-show="showWebhookMenu" x-transition.opacity style="display:none;">
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+                                    <div style="display:flex;align-items:center;gap:6px;">
+                                        <strong style="font-size:.82rem;color:var(--text-1);">Webhook Settings</strong>
+                                        <span style="font-size:.66rem;color:var(--text-muted);">(Instant Sync)</span>
+                                    </div>
+                                    <div>
+                                        <template x-if="tunnel.funnel_active">
+                                            <span class="badge badge-idle" style="font-size:.62rem;cursor:pointer;background:rgba(34,197,94,0.12);color:var(--accent);"
+                                                  @click="refreshTunnel()" title="Tailscale Funnel Active (Click to refresh)">
+                                                🟢 Funnel Active
+                                            </span>
+                                        </template>
+                                        <template x-if="tunnel.installed && !tunnel.funnel_active">
+                                            <span class="badge badge-paused" style="font-size:.62rem;cursor:pointer;"
+                                                  @click="refreshTunnel()" title="Funnel Inactive (Click to refresh)">
+                                                ⚪ Funnel Inactive
+                                            </span>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <div style="display:flex;flex-direction:column;gap:12px;">
+                                    <!-- URL Field & Copy -->
+                                    <div>
+                                        <label style="display:block;font-size:.68rem;color:var(--text-muted);margin-bottom:4px;font-weight:600;">PAYLOAD URL</label>
+                                        <div style="display:flex;gap:6px;">
+                                            <input :value="getWebhookUrl(activeProject.id)" readonly
+                                                   style="flex:1;font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--accent);padding:5px 8px;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;"
+                                                   @click="$event.target.select()">
+                                            <button class="btn-outline" style="padding:4px 10px;font-size:.72rem;"
+                                                    @click="copyWebhookUrl(activeProject.id)">Copy</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Toggles Row -->
+                                    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg-input);border-radius:6px;border:1px solid var(--border);">
+                                        <div style="display:flex;align-items:center;gap:6px;">
+                                            <span style="font-size:.74rem;font-weight:500;">Enabled</span>
+                                            <div class="toggle-sm" :class="{ active: activeProject.webhook && activeProject.webhook.enabled }"
+                                                 @click="toggleWebhook()"></div>
+                                        </div>
+                                        <div style="height:16px;width:1px;background:var(--border);"></div>
+                                        <div style="display:flex;align-items:center;gap:6px;">
+                                            <span style="font-size:.74rem;font-weight:500;">Tailscale</span>
+                                            <div class="toggle-sm" :class="{ active: activeProject.webhook && activeProject.webhook.use_tunnel }"
+                                                 @click="toggleTunnel()"></div>
+                                        </div>
+                                    </div>
+
+                                    <div x-show="activeProject.webhook && activeProject.webhook.use_tunnel && tunnel.domain"
+                                         style="font-size:.68rem;color:var(--text-muted);padding:0 2px;">
+                                        Domain: <span style="color:var(--accent);font-family:'JetBrains Mono',monospace;" x-text="tunnel.domain"></span>
+                                    </div>
+
+                                    <!-- Secret -->
+                                    <div>
+                                        <label style="display:block;font-size:.68rem;color:var(--text-muted);margin-bottom:4px;font-weight:600;">SECRET KEY (OPTIONAL)</label>
+                                        <input x-model="activeProject.webhook.secret" placeholder="HMAC-SHA256 secret"
+                                               style="width:100%;font-size:.74rem;padding:5px 8px;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;box-sizing:border-box;">
+                                    </div>
+
+                                    <!-- Notice -->
+                                    <div style="font-size:.68rem;color:var(--text-muted);text-align:right;border-top:1px solid var(--border);padding-top:8px;">
+                                        Click <strong>Save</strong> in header to persist
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <button class="btn-outline" @click="addUpstream()">+ Upstream</button>
                         <button class="btn-outline" @click="addForward()">+ Forward</button>
                         <button class="btn-primary" @click="saveProject()">Save</button>
@@ -435,60 +519,6 @@
                                 <span class="fl">Msg</span>
                                 <input x-model="activeProject.git.commit_messages.manual"
                                        placeholder="chore: manual update of {count} file(s) [{datetime}]">
-                            </div>
-                        </div>
-
-                        <!-- Webhook Instant Sync -->
-                        <div class="section">
-                            <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-                                <div style="display:flex;align-items:center;gap:6px;">
-                                    <span>Webhook (Instant Sync)</span>
-                                    <span class="cnt" style="font-size:.68rem;font-weight:normal;color:var(--text-muted);">GitHub push trigger</span>
-                                </div>
-                                <div style="display:flex;align-items:center;gap:6px;">
-                                    <template x-if="tunnel.funnel_active">
-                                        <span class="badge badge-idle" style="font-size:.66rem;cursor:pointer;background:rgba(34,197,94,0.12);color:var(--accent);"
-                                              @click="refreshTunnel()" title="Tailscale Funnel is Active (Click to refresh)">
-                                            🟢 Funnel Active
-                                        </span>
-                                    </template>
-                                    <template x-if="tunnel.installed && !tunnel.funnel_active">
-                                        <span class="badge badge-paused" style="font-size:.66rem;cursor:pointer;"
-                                              @click="refreshTunnel()" title="Funnel inactive (Click to refresh)">
-                                            ⚪ Funnel Inactive
-                                        </span>
-                                    </template>
-                                </div>
-                            </div>
-                            <div class="git-bar" style="margin-bottom:8px;">
-                                <span class="fl">URL</span>
-                                <input :value="getWebhookUrl(activeProject.id)" readonly
-                                       style="font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--accent);"
-                                       @click="$event.target.select()">
-                                <button class="btn-outline" style="padding:4px 8px;font-size:.72rem;"
-                                        @click="copyWebhookUrl(activeProject.id)">Copy</button>
-                            </div>
-                            <div class="entry-row" style="padding:6px 10px;gap:14px;flex-wrap:wrap;">
-                                <div style="display:flex;align-items:center;gap:6px;">
-                                    <span class="fl">Enabled</span>
-                                    <div class="toggle-sm" :class="{ active: activeProject.webhook && activeProject.webhook.enabled }"
-                                         @click="toggleWebhook()"></div>
-                                </div>
-                                <div class="sep"></div>
-                                <div style="display:flex;align-items:center;gap:6px;">
-                                    <span class="fl">Tailscale Tunnel</span>
-                                    <div class="toggle-sm" :class="{ active: activeProject.webhook && activeProject.webhook.use_tunnel }"
-                                         @click="toggleTunnel()"></div>
-                                    <span style="font-size:.7rem;color:var(--text-muted);"
-                                          x-show="activeProject.webhook && activeProject.webhook.use_tunnel && tunnel.domain"
-                                          x-text="tunnel.domain"></span>
-                                </div>
-                                <div class="sep"></div>
-                                <div class="fi" style="flex:1;min-width:180px;">
-                                    <span class="fl">Secret</span>
-                                    <input x-model="activeProject.webhook.secret" placeholder="Optional secret for HMAC-SHA256 verification"
-                                           style="font-size:.76rem;">
-                                </div>
                             </div>
                         </div>
                     </div>
