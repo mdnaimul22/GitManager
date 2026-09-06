@@ -4,18 +4,14 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from .paths import (
-    PROJECT_ROOT,
-    assert_path_sandboxed,
-    is_path_sandboxed,
-)
+from .paths import PROJECT_ROOT, resolve_sandboxed
+
+# Core protected directories that cannot be deleted or overwritten via files.py
+_PROTECTED_DIRS = {PROJECT_ROOT, PROJECT_ROOT / "src", PROJECT_ROOT / ".git"}
 
 
 def _abs(relative_path: str) -> Path:
-    p = Path(relative_path).expanduser()
-    if p.is_absolute():
-        return assert_path_sandboxed(p)
-    return assert_path_sandboxed(relative_path, base_root=PROJECT_ROOT)
+    return resolve_sandboxed(relative_path)
 
 
 def read_text(relative_path: str, encoding: str = "utf-8") -> str:
@@ -24,6 +20,9 @@ def read_text(relative_path: str, encoding: str = "utf-8") -> str:
 
 def write_text(relative_path: str, content: str, encoding: str = "utf-8") -> None:
     path = _abs(relative_path)
+    # Prevent modifying application source code
+    if path == PROJECT_ROOT or (PROJECT_ROOT / "src") in path.parents or path == (PROJECT_ROOT / "src"):
+        raise ValueError(f"Access denied: modifying source directory is forbidden: {relative_path}")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding=encoding)
 
@@ -37,15 +36,24 @@ def write_json(relative_path: str, data: Any, indent: int = 2) -> None:
 
 
 def exists(relative_path: str) -> bool:
-    return _abs(relative_path).exists()
+    try:
+        return _abs(relative_path).exists()
+    except (ValueError, OSError):
+        return False
 
 
 def is_file(relative_path: str) -> bool:
-    return _abs(relative_path).is_file()
+    try:
+        return _abs(relative_path).is_file()
+    except (ValueError, OSError):
+        return False
 
 
 def is_dir(relative_path: str) -> bool:
-    return _abs(relative_path).is_dir()
+    try:
+        return _abs(relative_path).is_dir()
+    except (ValueError, OSError):
+        return False
 
 
 def ensure_dir(relative_path: str) -> Path:
@@ -56,6 +64,9 @@ def ensure_dir(relative_path: str) -> Path:
 
 def delete(relative_path: str) -> None:
     path = _abs(relative_path)
+    # Self-destruction and critical directory guard
+    if path in _PROTECTED_DIRS or (PROJECT_ROOT / "src") in path.parents or (PROJECT_ROOT / ".git") in path.parents:
+        raise ValueError(f"Security violation: Cannot delete protected path: {relative_path}")
     if path.is_dir():
         shutil.rmtree(path)
     elif path.exists():
@@ -86,6 +97,6 @@ def get_abs_path(*parts: str) -> str:
     first = Path(parts[0]).expanduser()
     if first.is_absolute():
         p = Path(*parts).expanduser()
-        return str(assert_path_sandboxed(p))
+        return str(resolve_sandboxed(p))
     target = PROJECT_ROOT.joinpath(*parts)
-    return str(assert_path_sandboxed(target, base_root=PROJECT_ROOT))
+    return str(resolve_sandboxed(target))

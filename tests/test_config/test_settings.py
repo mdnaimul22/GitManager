@@ -8,7 +8,7 @@ Covers:
 
 import subprocess
 import pytest
-from src.config import Settings, read_text, PROJECT_ROOT
+from src.config import Settings, read_text, get_abs_path
 
 
 class TestSettings:
@@ -27,7 +27,7 @@ class TestSettings:
         result = subprocess.run(
             ["git", "ls-files", "--", "data/"],
             capture_output=True, text=True, timeout=5,
-            cwd=str(PROJECT_ROOT),
+            cwd=get_abs_path(),
         )
         tracked_files = result.stdout.strip()
         assert tracked_files == "", f"data/ files must not be git tracked: {tracked_files}"

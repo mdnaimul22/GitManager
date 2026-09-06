@@ -54,10 +54,7 @@ def api_list_projects():
 @router.post("", response_model=ProjectMeta, status_code=201)
 def api_create_project(data: ProjectCreate):
     """Create a new project."""
-    try:
-        return create_project(data)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+    return create_project(data)
 
 
 @router.get("/{project_id}", response_model=ProjectDetail)
@@ -75,10 +72,7 @@ def api_get_project(project_id: str):
 @router.put("/{project_id}", response_model=ProjectDetail)
 def api_update_project(project_id: str, data: ProjectUpdate):
     """Update project config (upstreams, forwards, git, schedule)."""
-    try:
-        result = update_project(project_id, data)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+    result = update_project(project_id, data)
     if not result:
         raise HTTPException(status_code=404, detail="Project not found")
     pool = _get_pool()

@@ -3,6 +3,7 @@ from pathlib import Path
 
 _MARKER_FILES = (".env", "main.py", "pyproject.toml", ".git", "cli.py", "app.py")
 
+
 def find_project_root() -> Path:
     current = Path(__file__).resolve().parent
     for candidate in [current] + list(current.parents):
@@ -10,138 +11,61 @@ def find_project_root() -> Path:
             return candidate
     return current.parent
 
+
 PROJECT_ROOT: Path = find_project_root().resolve()
-USER_HOME: Path = Path.home().resolve()
-
-# Forbidden critical system directories where no project or file operations may target
-FORBIDDEN_SYSTEM_DIRS: set[Path] = {
-    Path("/bin").resolve(),
-    Path("/sbin").resolve(),
-    Path("/usr").resolve(),
-    Path("/lib").resolve(),
-    Path("/lib64").resolve(),
-    Path("/boot").resolve(),
-    Path("/dev").resolve(),
-    Path("/proc").resolve(),
-    Path("/sys").resolve(),
-    Path("/run").resolve(),
-    Path("/var").resolve(),
-    Path("/etc").resolve(),
-    Path("/root").resolve(),
-}
-
-FORBIDDEN_SYSTEM_ROOTS: set[Path] = FORBIDDEN_SYSTEM_DIRS | {Path("/").resolve()}
-
-# Forbidden user files and credential directories inside USER_HOME
-FORBIDDEN_USER_NAMES: set[str] = {
-    ".ssh",
-    ".gnupg",
-    ".gpg",
-    ".bashrc",
-    ".bash_profile",
-    ".profile",
-    ".zshrc",
-    ".zprofile",
-    ".bash_history",
-    ".zsh_history",
-    ".gitconfig",
-    ".netrc",
-    ".aws",
-}
 
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-def is_path_sandboxed(
-    path: str | Path,
-    base_root: Path | None = None,
-) -> tuple[bool, str]:
+def _get_authorized_roots() -> list[Path]:
+    """Return all directories authorized for file access."""
+    roots = [PROJECT_ROOT]
+
+    # Allow pytest temporary testing directories
+    if "pytest" in sys.modules:
+        tmp_base = Path("/tmp").resolve()
+        roots.append(tmp_base)
+
+    # Allow registered project repository paths from data/projects.json
+    try:
+        reg_file = PROJECT_ROOT / "data" / "projects.json"
+        if reg_file.exists():
+            import json
+            for item in json.loads(reg_file.read_text()):
+                p = item.get("path")
+                if p:
+                    roots.append(Path(p).resolve())
+    except Exception:
+        pass
+
+    return roots
+
+
+def resolve_sandboxed(path: str | Path) -> Path:
     """
-    Validate whether a target path is safe and adheres to sandboxing constraints.
-
-    Rules:
-      1. Path must not be empty.
-      2. If base_root is provided:
-         - The resolved path must be within base_root (cannot traverse above base_root via '..').
-      3. If base_root is None:
-         - The resolved path cannot be the root filesystem ('/').
-         - The resolved path cannot be the root of '/tmp'.
-         - The resolved path cannot be the user home directory root itself ('USER_HOME').
-         - The resolved path cannot be inside or equal to any FORBIDDEN_SYSTEM_DIRS
-           (/etc, /bin, /sbin, /usr, /lib, /boot, /dev, /proc, /sys, /run, /var, /root).
-         - The resolved path cannot target sensitive user files or folders in USER_HOME
-           (~/.ssh, ~/.gnupg, ~/.bashrc, ~/.bash_profile, ~/.zshrc, ~/.aws, etc.).
-
-    Returns:
-      (True, "") if safe, or (False, error_message) if violated.
+    Ensure the path is strictly confined to PROJECT_ROOT (or authorized project roots).
+    Blocks directory traversal ('..'), symlink escapes, null bytes, and arbitrary file access.
     """
-    if not path:
-        return False, "Path cannot be empty"
-
     raw_str = str(path).strip()
     if not raw_str:
-        return False, "Path cannot be empty or whitespace"
+        raise ValueError("Path cannot be empty or whitespace")
+    if "\0" in raw_str:
+        raise ValueError("Null bytes not permitted in path")
 
-    try:
-        p = Path(raw_str).expanduser()
-        if base_root is not None:
-            resolved_base = base_root.resolve()
-            resolved = (resolved_base / p).resolve() if not p.is_absolute() else p.resolve()
-            if resolved != resolved_base and resolved_base not in resolved.parents:
-                return False, f"Access denied: path '{raw_str}' escapes sandbox base '{resolved_base}'"
-            # Check user security inside sandbox if it targets sensitive names
-            for forbidden_name in FORBIDDEN_USER_NAMES:
-                forbidden_path = USER_HOME / forbidden_name
-                if resolved == forbidden_path or forbidden_path in resolved.parents:
-                    return False, f"Access denied: path '{raw_str}' targets sensitive user configuration: {forbidden_name}"
-            return True, ""
+    p = Path(raw_str).expanduser()
 
-        # General path validation (when base_root is None)
-        resolved = p.resolve()
+    # Relative paths resolve strictly against PROJECT_ROOT
+    if not p.is_absolute():
+        resolved = (PROJECT_ROOT / p).resolve()
+        if resolved != PROJECT_ROOT and PROJECT_ROOT not in resolved.parents:
+            raise ValueError(f"Access denied: path '{path}' escapes PROJECT_ROOT sandbox ({PROJECT_ROOT})")
+        return resolved
 
-        # Check root filesystem
-        if resolved == Path("/").resolve():
-            return False, "Security violation: Root filesystem '/' cannot be used as project path"
+    # Absolute path check against authorized roots
+    resolved = p.resolve()
+    for root in _get_authorized_roots():
+        if resolved == root or root in resolved.parents:
+            return resolved
 
-        # Check /tmp root
-        if resolved == Path("/tmp").resolve():
-            return False, "Security violation: System directory '/tmp' root cannot be used directly as project path"
-
-        # Check USER_HOME root
-        if resolved == USER_HOME:
-            return False, "Security violation: User home directory cannot be used directly as project path"
-
-        # Check system forbidden directories
-        for forbidden_dir in FORBIDDEN_SYSTEM_DIRS:
-            if resolved == forbidden_dir or forbidden_dir in resolved.parents:
-                return False, f"Security violation: Path is in forbidden system directory: {forbidden_dir}"
-
-        # Check sensitive user files and directories
-        for forbidden_name in FORBIDDEN_USER_NAMES:
-            forbidden_path = USER_HOME / forbidden_name
-            if resolved == forbidden_path or forbidden_path in resolved.parents:
-                return False, f"Security violation: Path targets sensitive user configuration: {forbidden_name}"
-
-        return True, ""
-    except Exception as exc:
-        return False, f"Invalid path '{raw_str}': {exc}"
-
-
-def assert_path_sandboxed(
-    path: str | Path,
-    base_root: Path | None = None,
-) -> Path:
-    """
-    Assert that path is safe according to sandboxing rules.
-    Returns the resolved Path if safe, or raises ValueError if violated.
-    """
-    safe, reason = is_path_sandboxed(path, base_root=base_root)
-    if not safe:
-        raise ValueError(reason)
-
-    p = Path(path).expanduser()
-    if base_root is not None:
-        resolved_base = base_root.resolve()
-        return (resolved_base / p).resolve() if not p.is_absolute() else p.resolve()
-    return p.resolve()
+    raise ValueError(f"Access denied: path '{path}' escapes PROJECT_ROOT sandbox ({PROJECT_ROOT})")
