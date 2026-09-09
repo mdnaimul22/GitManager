@@ -77,3 +77,39 @@ class TestPullUpstreams:
         ]
         subpaths = _get_sparse_subpaths(entry, forwards)
         assert subpaths == []
+
+    def test_pull_upstreams_sparse_checkout_with_file_path(self, tmp_path):
+        import subprocess
+        origin_dir = tmp_path / "origin"
+        origin_dir.mkdir()
+        subprocess.run(["git", "init"], cwd=str(origin_dir), capture_output=True, check=True)
+        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=str(origin_dir), capture_output=True, check=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=str(origin_dir), capture_output=True, check=True)
+
+        (origin_dir / "skills").mkdir()
+        (origin_dir / "skills" / "s.txt").write_text("s")
+        (origin_dir / "helpers").mkdir()
+        (origin_dir / "helpers" / "api.py").write_text("api")
+        subprocess.run(["git", "add", "."], cwd=str(origin_dir), capture_output=True, check=True)
+        subprocess.run(["git", "commit", "-m", "init"], cwd=str(origin_dir), capture_output=True, check=True)
+        subprocess.run(["git", "branch", "-M", "master"], cwd=str(origin_dir), capture_output=True)
+
+        target_dir = tmp_path / "target_upstream"
+        entry = UpstreamEntry(
+            name="test-sparse-file",
+            path=str(target_dir),
+            url=str(origin_dir),
+            sparse=True,
+            branch="master",
+        )
+        forwards = [
+            ForwardRule(
+                from_path=f"{target_dir}/helpers/api.py",
+                to_path=str(tmp_path / "dst" / "api.py"),
+                enabled=True,
+            )
+        ]
+
+        results, updated = pull_upstreams([entry], forwards=forwards)
+        assert results["test-sparse-file"] is True
+        assert (target_dir / "helpers" / "api.py").exists()

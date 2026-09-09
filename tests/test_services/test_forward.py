@@ -10,7 +10,7 @@ Covers:
 import subprocess
 import time
 import pytest
-from src.schema.models import ForwardRule
+from src.schema.models import ForwardRule, UpstreamEntry
 from src.services.forward import (
     _copy_if_newer,
     _incremental_copy_function,
@@ -134,3 +134,126 @@ class TestOrphanCleanup:
         assert len(removed) == 0
         assert manual.exists(), "User manual skill must survive"
         assert managed.exists()
+
+
+class TestUpstreamSourceVerification:
+    """Tests for dynamic sparse-checkout expansion and missing upstream source detection."""
+
+    def test_dynamic_checkout_and_forward_when_source_in_upstream_git(self, tmp_path):
+        # 1. Set up origin repo with skills/ and helpers/api.py
+        origin_dir = tmp_path / "origin"
+        origin_dir.mkdir()
+        subprocess.run(["git", "init"], cwd=str(origin_dir), capture_output=True, check=True)
+        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=str(origin_dir), capture_output=True, check=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=str(origin_dir), capture_output=True, check=True)
+
+        (origin_dir / "skills").mkdir()
+        (origin_dir / "skills" / "SKILL.md").write_text("my skill")
+        (origin_dir / "helpers").mkdir()
+        (origin_dir / "helpers" / "api.py").write_text("print('api')")
+        subprocess.run(["git", "add", "."], cwd=str(origin_dir), capture_output=True, check=True)
+        subprocess.run(["git", "commit", "-m", "init"], cwd=str(origin_dir), capture_output=True, check=True)
+
+        # 2. Clone sparse clone that initially only checks out 'skills'
+        clone_dir = tmp_path / "repo" / ".data" / ".upstream"
+        clone_dir.parent.mkdir(parents=True)
+        subprocess.run(["git", "clone", "--no-checkout", str(origin_dir), str(clone_dir)], capture_output=True, check=True)
+        subprocess.run(["git", "sparse-checkout", "init", "--cone"], cwd=str(clone_dir), capture_output=True, check=True)
+        subprocess.run(["git", "sparse-checkout", "set", "skills"], cwd=str(clone_dir), capture_output=True, check=True)
+        # Checkout branch (master or main)
+        res_co = subprocess.run(["git", "checkout", "master"], cwd=str(clone_dir), capture_output=True)
+        if res_co.returncode != 0:
+            subprocess.run(["git", "checkout", "main"], cwd=str(clone_dir), capture_output=True, check=True)
+
+        # Before forward: helpers/api.py does not exist on disk
+        target_src = str(clone_dir / "helpers" / "api.py")
+        assert not (clone_dir / "helpers").exists()
+
+        # 3. Define upstream entry and forward rule targeting helpers/api.py
+        upstream = UpstreamEntry(
+            name="test-upstream",
+            upstream_id="up123456",
+            path=str(clone_dir),
+            url=str(origin_dir),
+            sparse=True,
+            branch="master",
+        )
+        dst_dir = tmp_path / "repo" / "destination"
+        dst_dir.mkdir(parents=True)
+        target_dst = str(dst_dir / "api.py")
+
+        rule = ForwardRule(
+            from_path=target_src,
+            to_path=target_dst,
+            upstream_id="up123456",
+            enabled=True,
+        )
+
+        copied, memory = forward_skills([rule], repo_root=str(tmp_path / "repo"), upstreams=[upstream])
+
+        # 4. Verify helpers/api.py was dynamically checked out and forwarded
+        assert "api.py" in copied
+        assert (dst_dir / "api.py").exists()
+        assert (dst_dir / "api.py").read_text() == "print('api')"
+        assert len(memory) == 1
+
+    def test_warns_when_upstream_file_genuinely_missing(self, tmp_path, caplog):
+        import logging
+        origin_dir = tmp_path / "origin"
+        origin_dir.mkdir()
+        subprocess.run(["git", "init"], cwd=str(origin_dir), capture_output=True, check=True)
+        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=str(origin_dir), capture_output=True, check=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=str(origin_dir), capture_output=True, check=True)
+        (origin_dir / "skills").mkdir()
+        (origin_dir / "skills" / "SKILL.md").write_text("my skill")
+        subprocess.run(["git", "add", "."], cwd=str(origin_dir), capture_output=True, check=True)
+        subprocess.run(["git", "commit", "-m", "init"], cwd=str(origin_dir), capture_output=True, check=True)
+
+        clone_dir = tmp_path / "repo" / ".data" / ".upstream"
+        clone_dir.parent.mkdir(parents=True)
+        subprocess.run(["git", "clone", str(origin_dir), str(clone_dir)], capture_output=True, check=True)
+
+        target_src = str(clone_dir / "helpers" / "missing.py")
+        upstream = UpstreamEntry(
+            name="test-upstream",
+            upstream_id="up123456",
+            path=str(clone_dir),
+            url=str(origin_dir),
+            sparse=True,
+            branch="master",
+        )
+        rule = ForwardRule(
+            from_path=target_src,
+            to_path=str(tmp_path / "dst" / "missing.py"),
+            upstream_id="up123456",
+            enabled=True,
+        )
+
+        fwd_logger = logging.getLogger("gitmanager.services.forward")
+        fwd_logger.addHandler(caplog.handler)
+        try:
+            with caplog.at_level(logging.WARNING):
+                copied, memory = forward_skills([rule], repo_root=str(tmp_path / "repo"), upstreams=[upstream])
+        finally:
+            fwd_logger.removeHandler(caplog.handler)
+
+        assert len(copied) == 0
+        assert "UpStreaming Source file missing" in caplog.text
+
+    def test_warns_when_non_upstream_source_missing(self, tmp_path, caplog):
+        import logging
+        rule = ForwardRule(
+            from_path=str(tmp_path / "nonexistent" / "custom.py"),
+            to_path=str(tmp_path / "dst" / "custom.py"),
+            enabled=True,
+        )
+        fwd_logger = logging.getLogger("gitmanager.services.forward")
+        fwd_logger.addHandler(caplog.handler)
+        try:
+            with caplog.at_level(logging.WARNING):
+                copied, memory = forward_skills([rule], repo_root=str(tmp_path))
+        finally:
+            fwd_logger.removeHandler(caplog.handler)
+
+        assert len(copied) == 0
+        assert "Source missing — skipping" in caplog.text

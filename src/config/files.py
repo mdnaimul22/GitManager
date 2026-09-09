@@ -2,7 +2,7 @@ import os
 import json
 import shutil
 from pathlib import Path
-from typing import Any
+from typing import Any, Union
 
 from .paths import PROJECT_ROOT, resolve_sandboxed
 
@@ -100,3 +100,26 @@ def get_abs_path(*parts: str) -> str:
         return str(resolve_sandboxed(p))
     target = PROJECT_ROOT.joinpath(*parts)
     return str(resolve_sandboxed(target))
+
+
+def get_rel_path(path: Union[str, Path], base: Union[str, Path, None] = None) -> str:
+    """
+    Return path relative to base directory (defaults to PROJECT_ROOT).
+    If path is already relative or outside base, returns clean path string.
+    """
+    if not path:
+        return ""
+    p_str = str(path).strip()
+    base_dir = Path(base).resolve() if base else PROJECT_ROOT
+    try:
+        p = Path(p_str).expanduser()
+        if p.is_absolute():
+            return str(p.resolve().relative_to(base_dir))
+    except (ValueError, OSError):
+        pass
+
+    clean_base = str(base_dir).rstrip("/")
+    if p_str.startswith(clean_base + "/"):
+        return p_str[len(clean_base) + 1:].lstrip("/")
+    return p_str
+

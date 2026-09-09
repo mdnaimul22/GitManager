@@ -8,7 +8,7 @@ from src.helpers import time_now_iso, time_now_formatted
 from src.providers import run_git, get_status
 
 from .upstream import pull_upstreams
-from .forward import forward_skills, cleanup_orphans, load_registry, save_registry
+from .forward import forward_skills, cleanup_orphans, load_memory, save_memory
 from .commit import classify_changes, commit_and_push
 
 logger = setup_logger(Settings.LOG_DIR / "service.log", name="gitmanager.services.sync")
@@ -19,8 +19,8 @@ def sync_job(watcher: ConfigWatcher) -> None:
     Execute the full sync pipeline for a single project:
       0. Pull main repo
       1. Pull upstreams
-      2. Forward skills
-      2.5. Orphan cleanup
+      2. Orphan cleanup (lineage tracking by forward_id/upstream_id)
+      2.5. Forward skills with Auto-Prune Mirroring
       3. Commit & push
     """
     sep = "─" * 62
@@ -47,28 +47,31 @@ def sync_job(watcher: ConfigWatcher) -> None:
 
     # Step 1 — Pull upstream repositories
     logger.info(f"📥 [{project_id}] STEP 1 — Pulling upstream repositories")
-    pulls, updated_upstreams = pull_upstreams(watcher.upstreams, forwards=watcher.forwards)
+    pulls, updated_upstreams = pull_upstreams(watcher.upstreams, repo_root=repo_root, forwards=watcher.forwards)
 
-    # Step 2 — Forward skill paths
-    logger.info(f"📁 [{project_id}] STEP 2 — Forwarding skill paths")
+    # Step 2 — Orphan cleanup (using structured memory with forward_id & upstream_id)
+    logger.info(f"🧹 [{project_id}] STEP 2 — Checking orphaned or modified upstream rules")
     memory_rel = f"{Settings.RAW_DATA_DIR}/{project_id}/{Settings.MEMORY_FILE}"
-    previous_managed = load_registry(memory_rel)
-    copied, current_managed = forward_skills(watcher.forwards)
+    previous_memory = load_memory(memory_rel)
+    removed = cleanup_orphans(
+        previous=previous_memory,
+        current=watcher.forwards,
+        repo_root=repo_root,
+        upstreams=watcher.upstreams,
+    )
 
-    # Step 2.5 — Orphan cleanup
-    logger.info(f"🧹 [{project_id}] STEP 2.5 — Cleaning up orphaned upstream skills")
-    removed = cleanup_orphans(previous_managed, current_managed, repo_root=repo_root)
-    save_registry(current_managed, memory_rel)
-
-    # Step 2.5b — Commit orphan deletions immediately (before upstream commit)
-    # This is critical: if we skip this, git pull on next sync restores ghosts
-    # from remote because the deletion was staged but never committed/pushed.
+    # Step 2b — Commit orphan deletions immediately (before forwarding new files)
+    # This ensures old wrong paths and submodules are purged from Git and remote first.
     if removed:
         orphan_time = time_now_formatted("%Y-%m-%d %H:%M")
         orphan_msg = f"chore: remove {len(removed)} orphaned skill(s) [{orphan_time}]"
-        run_git(["commit", "-m", orphan_msg], repo_root, logger)
-        if git_cfg.auto_push:
+        ok_cmt, _ = run_git(["commit", "-m", orphan_msg], repo_root, logger)
+        if ok_cmt and git_cfg.auto_push:
             run_git(["push", "origin", branch], repo_root, logger)
+
+    # Step 2.5 — Forward skill paths with Auto-Prune Mirror
+    logger.info(f"📁 [{project_id}] STEP 2.5 — Forwarding skill paths (Auto-Prune Mirror)")
+    copied, current_memory = forward_skills(watcher.forwards, repo_root=repo_root, upstreams=watcher.upstreams)
 
     # Step 3 — Commit & push
     logger.info(f"🚀 [{project_id}] STEP 3 — Committing & pushing to own repo")
@@ -93,6 +96,12 @@ def sync_job(watcher: ConfigWatcher) -> None:
         commit_messages=git_cfg.commit_messages,
         auto_push=git_cfg.auto_push,
     )
+
+    # Step 4 — Update Memory (ONLY after sync and commit cycle completes)
+    # Keeping previous memory intact until now ensures the evidence of old paths
+    # is never lost prematurely if any step fails.
+    if push_ok or copied or removed:
+        save_memory(current_memory, memory_rel)
 
     # Update project status
     from .project import update_project_status

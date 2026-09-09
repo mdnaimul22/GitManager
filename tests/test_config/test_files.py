@@ -19,6 +19,7 @@ from src.config import (
     delete,
     get_mtime,
     get_abs_path,
+    get_rel_path,
 )
 
 
@@ -123,3 +124,36 @@ class TestFileOperations:
     def test_write_text_prevents_modifying_source_code(self):
         with pytest.raises(ValueError, match="modifying source directory is forbidden"):
             write_text("src/malicious.py", "# hack")
+
+
+class TestGetRelPath:
+    """Unit tests for get_rel_path relative path conversion utility."""
+
+    def test_empty_path(self):
+        assert get_rel_path("") == ""
+
+    def test_already_relative_path(self):
+        assert get_rel_path(".data/foo/skills") == ".data/foo/skills"
+        assert get_rel_path("skills/storage/my_skill") == "skills/storage/my_skill"
+
+    def test_absolute_path_under_project_root(self):
+        abs_p = get_abs_path("skills/storage/agent-zero")
+        assert get_rel_path(abs_p) == "skills/storage/agent-zero"
+
+    def test_absolute_path_under_custom_base(self):
+        base = "/home/user/project"
+        abs_p = "/home/user/project/skills/storage/my_skill"
+        assert get_rel_path(abs_p, base) == "skills/storage/my_skill"
+
+    def test_path_outside_custom_base(self):
+        base = "/home/user/project"
+        outside_p = "/var/log/syslog"
+        assert get_rel_path(outside_p, base) == "/var/log/syslog"
+
+    def test_handles_trailing_slashes(self):
+        base = "/home/user/project/"
+        abs_p = "/home/user/project/skills/storage/demo/"
+        # Resolving via Path or string stripping should produce clean relative path
+        result = get_rel_path(abs_p, base)
+        assert result in ("skills/storage/demo", "skills/storage/demo/")
+

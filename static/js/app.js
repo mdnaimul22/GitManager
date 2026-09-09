@@ -152,16 +152,71 @@ document.addEventListener('alpine:init', () => {
             } catch (e) { alert('Failed: ' + e.message); }
         },
 
+        _gen8Id() {
+            if (window.crypto && window.crypto.getRandomValues) {
+                return Array.from(window.crypto.getRandomValues(new Uint8Array(4)))
+                    .map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+            return Math.random().toString(16).substring(2, 10);
+        },
+
         async selectProject(id) {
             this.loading = true;
             try {
                 const proj = await this.api('GET', `/${id}`);
+                if (proj.upstreams) {
+                    proj.upstreams = proj.upstreams.map(u => {
+                        const uid = u.upstream_id || u.id || this._gen8Id();
+                        const pname = u.project_name || u.name || '';
+                        return {
+                            ...u,
+                            project_name: pname,
+                            name: pname,
+                            upstream_id: uid,
+                            id: uid,
+                        };
+                    });
+                }
+                const upIdMap = {};
+                (proj.upstreams || []).forEach(u => {
+                    const uid = u.upstream_id || u.id;
+                    if (uid) upIdMap[uid] = u;
+                });
+
                 if (proj.forwards) {
-                    proj.forwards = proj.forwards.map(f => ({
-                        from: f.from || f.from_path || '',
-                        to: f.to || f.to_path || '',
-                        enabled: f.enabled !== false,
-                    }));
+                    proj.forwards = proj.forwards.map(f => {
+                        let upId = f.upstream_id || '';
+                        let upName = f.project_name || f.upstream || '';
+                        if (!upId && upName) {
+                            const match = (proj.upstreams || []).find(u => (u.project_name || u.name) === upName);
+                            if (match) upId = match.upstream_id || match.id;
+                        }
+                        if (!upId) {
+                            const src = (f.from || f.from_path || '').toLowerCase();
+                            for (const u of (proj.upstreams || [])) {
+                                const cleanName = (u.project_name || u.name || '').toLowerCase().replace(/^[._]/, '');
+                                if (cleanName && (src.includes(cleanName) || src.includes((u.project_name || u.name).toLowerCase()))) {
+                                    upId = u.upstream_id || u.id;
+                                    upName = u.project_name || u.name;
+                                    break;
+                                }
+                            }
+                        }
+                        if (upId && upIdMap[upId] && !upName) {
+                            upName = upIdMap[upId].project_name || upIdMap[upId].name;
+                        }
+                        const fid = f.forward_id || f.id || this._gen8Id();
+                        return {
+                            forward_id: fid,
+                            id: fid,
+                            from: f.from || f.from_path || '',
+                            to: f.to || f.to_path || '',
+                            upstream_id: upId,
+                            project_name: upName,
+                            upstream: upName,
+                            enabled: f.enabled !== false,
+                        };
+                    });
                 }
                 if (!proj.webhook) {
                     proj.webhook = { enabled: false, secret: '', use_tunnel: this.tunnel.funnel_active, tunnel_url: '' };
@@ -179,22 +234,74 @@ document.addEventListener('alpine:init', () => {
         async saveProject() {
             if (!this.activeProject) return;
             try {
+                const upMap = {};
+                (this.activeProject.upstreams || []).forEach(u => {
+                    const uid = u.upstream_id || u.id;
+                    if (uid) upMap[uid] = u.project_name || u.name || '';
+                });
+
                 const payload = {
-                    upstreams: this.activeProject.upstreams,
-                    forwards: this.activeProject.forwards.map(f => ({
-                        from: f.from || '', to: f.to || '', enabled: f.enabled,
+                    upstreams: this.activeProject.upstreams.map(u => ({
+                        project_name: u.project_name || u.name || '',
+                        upstream_id: u.upstream_id || u.id || this._gen8Id(),
+                        pull: u.pull !== false,
+                        sparse: u.sparse !== false,
+                        blobless: u.blobless !== false,
+                        branch: u.branch || 'main',
+                        path: u.path || '',
+                        url: u.url || '',
                     })),
+                    forwards: this.activeProject.forwards.map(f => {
+                        const uid = f.upstream_id || '';
+                        const resolvedName = (uid && upMap[uid]) ? upMap[uid] : (f.project_name || f.upstream || '');
+                        return {
+                            enabled: f.enabled !== false,
+                            project_name: resolvedName,
+                            upstream_id: uid,
+                            forward_id: f.forward_id || f.id || this._gen8Id(),
+                            from: f.from || '',
+                            to: f.to || '',
+                        };
+                    }),
                     git: this.activeProject.git,
                     schedule: this.activeProject.schedule,
                     webhook: this.activeProject.webhook,
                 };
                 const result = await this.api('PUT', `/${this.activeProjectId}`, payload);
+                if (result.upstreams) {
+                    this.activeProject.upstreams = result.upstreams.map(u => {
+                        const uid = u.upstream_id || u.id || this._gen8Id();
+                        const pname = u.project_name || u.name || '';
+                        return {
+                            ...u,
+                            project_name: pname,
+                            name: pname,
+                            upstream_id: uid,
+                            id: uid,
+                        };
+                    });
+                }
                 if (result.forwards) {
-                    result.forwards = result.forwards.map(f => ({
-                        from: f.from || f.from_path || '',
-                        to: f.to || f.to_path || '',
-                        enabled: f.enabled !== false,
-                    }));
+                    const upIdMap = {};
+                    (this.activeProject.upstreams || []).forEach(u => {
+                        const uid = u.upstream_id || u.id;
+                        if (uid) upIdMap[uid] = u;
+                    });
+                    this.activeProject.forwards = result.forwards.map(f => {
+                        const upId = f.upstream_id || '';
+                        const upName = f.project_name || f.upstream || (upIdMap[upId] ? (upIdMap[upId].project_name || upIdMap[upId].name) : '');
+                        const fid = f.forward_id || f.id || this._gen8Id();
+                        return {
+                            forward_id: fid,
+                            id: fid,
+                            from: f.from || f.from_path || '',
+                            to: f.to || f.to_path || '',
+                            upstream_id: upId,
+                            project_name: upName,
+                            upstream: upName,
+                            enabled: f.enabled !== false,
+                        };
+                    });
                 }
                 if (!result.webhook) {
                     result.webhook = { enabled: false, secret: '' };
@@ -242,14 +349,96 @@ document.addEventListener('alpine:init', () => {
         // ── Upstream / Forward Management ─────────────────────────────
         addUpstream() {
             if (!this.activeProject) return;
+            const uid = this._gen8Id();
             this.activeProject.upstreams.push({
-                name: '', path: '', url: '', branch: 'main', pull: true, sparse: true, blobless: true,
+                project_name: '',
+                name: '',
+                upstream_id: uid,
+                id: uid,
+                path: '', url: '', branch: 'main', pull: true, sparse: true, blobless: true,
             });
         },
-        removeUpstream(i) { this.activeProject.upstreams.splice(i, 1); },
-        addForward() {
+        removeUpstream(i) {
+            const removed = this.activeProject.upstreams.splice(i, 1)[0];
+            // Clear upstream_id from forwards if their upstream was deleted
+            if (removed) {
+                const remId = removed.upstream_id || removed.id;
+                (this.activeProject.forwards || []).forEach(f => {
+                    if (f.upstream_id === remId) {
+                        f.upstream_id = '';
+                    }
+                });
+            }
+        },
+        addForward(upstreamIdOrName = null) {
             if (!this.activeProject) return;
-            this.activeProject.forwards.push({ from: '', to: '', enabled: true });
+            const upstreams = this.activeProject.upstreams || [];
+            let matchUp = null;
+            if (upstreamIdOrName) {
+                matchUp = upstreams.find(u =>
+                    (u.upstream_id && u.upstream_id === upstreamIdOrName) ||
+                    (u.id && u.id === upstreamIdOrName) ||
+                    (u.project_name && u.project_name === upstreamIdOrName) ||
+                    (u.name && u.name === upstreamIdOrName)
+                );
+            } else if (upstreams.length === 1) {
+                matchUp = upstreams[0];
+            }
+
+            let upId = matchUp ? (matchUp.upstream_id || matchUp.id || '') : '';
+            let upName = matchUp ? (matchUp.project_name || matchUp.name || '') : '';
+            let defaultFrom = '';
+            if (matchUp && matchUp.path) {
+                defaultFrom = matchUp.path.endsWith('/') ? matchUp.path : matchUp.path + '/';
+            }
+
+            const fid = this._gen8Id();
+            this.activeProject.forwards.push({
+                forward_id: fid,
+                id: fid,
+                upstream_id: upId,
+                project_name: upName,
+                upstream: upName,
+                from: defaultFrom,
+                to: '',
+                enabled: true,
+            });
+        },
+        onForwardUpstreamChange(idx) {
+            const f = this.activeProject.forwards[idx];
+            if (!f) return;
+            const upstreams = this.activeProject.upstreams || [];
+            const u = upstreams.find(up =>
+                (up.upstream_id && up.upstream_id === f.upstream_id) ||
+                (up.id && up.id === f.upstream_id) ||
+                (up.project_name && up.project_name === f.upstream_id) ||
+                (up.name && up.name === f.upstream_id)
+            );
+            if (u) {
+                f.upstream_id = u.upstream_id || u.id;
+                f.project_name = u.project_name || u.name;
+                f.upstream = f.project_name;
+                if (u.path) {
+                    const base = u.path.endsWith('/') ? u.path : u.path + '/';
+                    const wasOtherUpstream = upstreams.some(
+                        other => ((other.upstream_id !== u.upstream_id && other.id !== u.id)) && other.path && f.from.startsWith(other.path)
+                    );
+                    if (!f.from || wasOtherUpstream) {
+                        let sub = '';
+                        if (wasOtherUpstream) {
+                            const prevUp = upstreams.find(other => f.from.startsWith(other.path));
+                            if (prevUp && prevUp.path) {
+                                sub = f.from.slice(prevUp.path.length).replace(/^\/+/, '');
+                            }
+                        }
+                        f.from = sub ? `${base}${sub}` : base;
+                    }
+                }
+            } else {
+                f.upstream_id = '';
+                f.project_name = '';
+                f.upstream = '';
+            }
         },
         removeForward(i) { this.activeProject.forwards.splice(i, 1); },
 
@@ -335,21 +524,48 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        // ── Grouped Forwards (by upstream name) ───────────────────────
+        // ── Grouped Forwards (by upstream) ───────────────────────────
         get groupedForwards() {
             if (!this.activeProject) return {};
             const groups = {};
-            const upNames = (this.activeProject.upstreams || []).map(u => u.name).filter(Boolean);
+            const upstreams = this.activeProject.upstreams || [];
+            const upMap = {};
+            upstreams.forEach(u => {
+                const uid = u.upstream_id || u.id;
+                if (uid) upMap[uid] = u;
+            });
+
             (this.activeProject.forwards || []).forEach((f, i) => {
-                let cat = 'other';
-                const src = (f.from || '').toLowerCase();
-                for (const name of upNames) {
-                    const cleanName = name.toLowerCase().replace(/^[._]/, '');
-                    if (src.includes(cleanName) || src.includes(name.toLowerCase())) {
-                        cat = name;
-                        break;
+                let cat = '';
+                // 1. Match by upstream_id
+                if (f.upstream_id && upMap[f.upstream_id]) {
+                    cat = upMap[f.upstream_id].project_name || upMap[f.upstream_id].name;
+                }
+                // 2. Match by upstream name / project_name
+                const targetName = f.project_name || f.upstream;
+                if (!cat && targetName) {
+                    const found = upstreams.find(u => (u.project_name === targetName || u.name === targetName));
+                    if (found) {
+                        cat = found.project_name || found.name;
+                        if (!f.upstream_id) f.upstream_id = found.upstream_id || found.id;
+                    } else {
+                        cat = targetName;
                     }
                 }
+                // 3. Fallback to path matching
+                if (!cat) {
+                    const src = (f.from || '').toLowerCase();
+                    for (const u of upstreams) {
+                        const uname = u.project_name || u.name || '';
+                        const cleanName = uname.toLowerCase().replace(/^[._]/, '');
+                        if (uname && (src.includes(cleanName) || src.includes(uname.toLowerCase()))) {
+                            cat = uname;
+                            if (!f.upstream_id) f.upstream_id = u.upstream_id || u.id;
+                            break;
+                        }
+                    }
+                }
+                if (!cat) cat = 'other';
                 if (!groups[cat]) groups[cat] = [];
                 groups[cat].push({ ...f, _idx: i });
             });

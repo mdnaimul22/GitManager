@@ -4,7 +4,7 @@ Fan-in point. Orchestrates Core logic and Providers. This is the only layer wher
 
 from .sync import sync_job
 from .upstream import pull_upstreams
-from .forward import forward_skills, cleanup_orphans, load_registry, save_registry
+from .forward import forward_skills, cleanup_orphans, load_registry, save_registry, load_memory, save_memory
 from .commit import classify_changes, commit_and_push
 from .project import (
     load_project_configs,
@@ -20,6 +20,8 @@ __all__ = [
     "cleanup_orphans",
     "load_registry",
     "save_registry",
+    "load_memory",
+    "save_memory",
     "classify_changes",
     "commit_and_push",
     "load_project_configs",

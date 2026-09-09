@@ -61,3 +61,28 @@ class TestProjectService:
 
         # Restore
         update_project_status("test-project", status="idle", last_sync=None)
+
+    def test_update_project_assigns_8char_hash_ids_and_deduplicates_forwards(self):
+        meta = create_project(ProjectCreate(
+            name="Hash ID Test Proj",
+            path="/tmp/hash-id-test-proj",
+        ))
+        try:
+            up1 = UpstreamEntry(name="up1", path=".data/up1", url="https://github.com/a/b.git")
+            f1 = ForwardRule(from_path=".data/up1/skills", to_path="skills/up1", upstream_id=up1.id)
+            f_duplicate = ForwardRule(from_path=".data/up1/skills", to_path="skills/up1", upstream_id=up1.id)
+
+            update_project(meta.id, ProjectUpdate(
+                upstreams=[up1],
+                forwards=[f1, f_duplicate],
+            ))
+
+            detail = get_project(meta.id)
+            assert detail is not None
+            assert len(detail.upstreams) == 1
+            assert len(detail.upstreams[0].id) == 8
+            assert len(detail.forwards) == 1  # Deduplicated!
+            assert detail.forwards[0].upstream_id == detail.upstreams[0].id
+            assert len(detail.forwards[0].id) == 8
+        finally:
+            delete_project(meta.id)

@@ -2,20 +2,11 @@
 Smart commit and push service — per-upstream commits and manual commits with template messages.
 """
 
-from src.config import Settings, setup_logger
-from src.providers import run_git
+from src.config import Settings, setup_logger, get_rel_path
+from src.providers import run_git, get_status
 from src.schema import CommitMessages, ForwardRule, UpstreamEntry
 
 logger = setup_logger(Settings.LOG_DIR / "service.log", name="gitmanager.services.commit")
-
-
-def _to_abs(path: str, repo_root: str) -> str:
-    """Ensure path is resolved to absolute string against repo_root."""
-    if not path:
-        return ""
-    if path.startswith("/"):
-        return path
-    return f"{repo_root.rstrip('/')}/{path.lstrip('/')}"
 
 
 def classify_changes(
@@ -47,9 +38,9 @@ def classify_changes(
         if " -> " in changed_file:
             changed_file = changed_file.split(" -> ")[-1].strip('"')
 
-        changed_abs = _to_abs(changed_file, repo_root)
+        changed_rel = get_rel_path(changed_file, repo_root)
 
-        matched_upstream = _match_to_upstream(changed_abs, forwards, upstreams, repo_root)
+        matched_upstream = _match_to_upstream(changed_rel, forwards, upstreams, repo_root)
 
         if matched_upstream:
             upstream_changes.setdefault(matched_upstream, []).append(changed_file)
@@ -63,27 +54,60 @@ def classify_changes(
 
 
 def _match_to_upstream(
-    changed_abs: str,
+    changed_rel: str,
     forwards: list[ForwardRule],
     upstreams: list[UpstreamEntry],
     repo_root: str,
 ) -> str | None:
     """Match a changed file path to its upstream origin via forward rules."""
+    up_id_map = {u.id: u.name for u in upstreams if u.id}
+    up_name_set = {u.name for u in upstreams if u.name}
+
     for rule in forwards:
         if not rule.enabled or not rule.to_path:
             continue
 
-        dst_abs = _to_abs(rule.to_path, repo_root).rstrip("/")
-        is_match = changed_abs == dst_abs or changed_abs.startswith(dst_abs + "/")
+        dst_rel = get_rel_path(rule.to_path, repo_root).rstrip("/")
+        is_match = changed_rel == dst_rel or changed_rel.startswith(dst_rel + "/")
 
-        if is_match and rule.from_path:
-            src_abs = _to_abs(rule.from_path, repo_root).rstrip("/")
-            for up in upstreams:
-                up_abs = _to_abs(up.path, repo_root).rstrip("/")
-                if src_abs == up_abs or src_abs.startswith(up_abs + "/"):
-                    return up.name
+        if is_match:
+            if rule.upstream_id and rule.upstream_id in up_id_map:
+                return up_id_map[rule.upstream_id]
+            if rule.upstream and rule.upstream in up_name_set:
+                return rule.upstream
+            if rule.from_path:
+                src_rel = get_rel_path(rule.from_path, repo_root).rstrip("/")
+                for up in upstreams:
+                    up_rel = get_rel_path(up.path, repo_root).rstrip("/")
+                    if src_rel == up_rel or src_rel.startswith(up_rel + "/"):
+                        return up.name
 
     return None
+
+
+def _filter_files_to_add(files: list[str], repo_root: str) -> list[str]:
+    """
+    Return only files that need to be staged with 'git add'.
+
+    Files that are already staged as deleted ('D ') in Git's index are skipped,
+    preventing 'fatal: pathspec did not match any files' error.
+    """
+    ok, status_out = get_status(repo_root, logger)
+    if not ok or not status_out:
+        return files
+
+    staged_deletions: set[str] = set()
+    for line in status_out.splitlines():
+        if len(line) < 3:
+            continue
+        code = line[:2]
+        if code[0] == "D":
+            p = line[2:].strip().strip('"')
+            if " -> " in p:
+                p = p.split(" -> ")[-1].strip('"')
+            staged_deletions.add(p)
+
+    return [f for f in files if f not in staged_deletions]
 
 
 def commit_and_push(
@@ -113,10 +137,13 @@ def commit_and_push(
     for up_name, files in upstream_changes.items():
         if not files:
             continue
-        ok_add, out_add = run_git(["add", "--"] + files, repo_root, logger)
-        if not ok_add:
-            logger.error(f"     ✗  git add failed for {up_name}: {out_add}")
-            continue
+
+        files_to_add = _filter_files_to_add(files, repo_root)
+        if files_to_add:
+            ok_add, out_add = run_git(["add", "--"] + files_to_add, repo_root, logger)
+            if not ok_add:
+                logger.error(f"     ✗  git add failed for {up_name}: {out_add}")
+                continue
 
         template = (
             commit_messages.upstreams.get(up_name)
@@ -132,26 +159,34 @@ def commit_and_push(
         logger.info(f"  📝 Committing {len(files)} files for [{up_name}] …")
         ok_cmt, out_cmt = run_git(["commit", "-m", msg], repo_root, logger)
         if not ok_cmt:
-            logger.error(f"     ✗  git commit failed for {up_name}: {out_cmt}")
+            if "nothing to commit" in out_cmt or "working tree clean" in out_cmt:
+                logger.debug(f"     ⏭  Nothing to commit for {up_name}")
+            else:
+                logger.error(f"     ✗  git commit failed for {up_name}: {out_cmt}")
 
     # 2. Commit manual changes (user's own work)
     if manual_files:
-        ok_add, out_add = run_git(["add", "--"] + manual_files, repo_root, logger)
-        if not ok_add:
-            logger.error(f"     ✗  git add failed for manual changes: {out_add}")
-        else:
-            template = (
-                commit_messages.manual
-                or "chore: manual update of {count} file(s) [{datetime}]"
-            )
-            msg = (
-                template
-                .replace("{count}", str(len(manual_files)))
-                .replace("{datetime}", current_time)
-            )
-            logger.info(f"  📝 Committing {len(manual_files)} manual file(s) …")
-            ok_cmt, out_cmt = run_git(["commit", "-m", msg], repo_root, logger)
-            if not ok_cmt:
+        manual_to_add = _filter_files_to_add(manual_files, repo_root)
+        if manual_to_add:
+            ok_add, out_add = run_git(["add", "--"] + manual_to_add, repo_root, logger)
+            if not ok_add:
+                logger.error(f"     ✗  git add failed for manual changes: {out_add}")
+
+        template = (
+            commit_messages.manual
+            or "chore: manual update of {count} file(s) [{datetime}]"
+        )
+        msg = (
+            template
+            .replace("{count}", str(len(manual_files)))
+            .replace("{datetime}", current_time)
+        )
+        logger.info(f"  📝 Committing {len(manual_files)} manual file(s) …")
+        ok_cmt, out_cmt = run_git(["commit", "-m", msg], repo_root, logger)
+        if not ok_cmt:
+            if "nothing to commit" in out_cmt or "working tree clean" in out_cmt:
+                logger.debug("     ⏭  Nothing to commit for manual changes")
+            else:
                 logger.error(f"     ✗  git commit failed for manual changes: {out_cmt}")
 
     if not auto_push:

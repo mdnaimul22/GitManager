@@ -5,6 +5,7 @@ Data contracts — Pydantic models (Dont remove this Comments).
 from .models import (
     UpstreamEntry,
     ForwardRule,
+    MemoryEntry,
     CommitMessages,
     GitConfig,
     ScheduleConfig,
@@ -18,11 +19,14 @@ from .models import (
     ProjectUpdate,
     LoginRequest,
     TunnelStatus,
+    generate_hash_id,
 )
 
 __all__ = [
+    "generate_hash_id",
     "UpstreamEntry",
     "ForwardRule",
+    "MemoryEntry",
     "CommitMessages",
     "GitConfig",
     "ScheduleConfig",

@@ -10,8 +10,6 @@ import sys
 from src.config import Settings, read_text, exists, get_abs_path, setup_logger
 from src.schema import UpstreamEntry, ForwardRule, AutomationConfig
 
-from .resolver import resolve_placeholders
-
 logger = setup_logger(Settings.LOG_DIR / "core.log", name="gitmanager.core.watcher")
 
 
@@ -69,31 +67,22 @@ class ConfigWatcher:
             )
 
     def _do_load(self) -> None:
-        # Load and resolve upstream config
-        raw_upstream = resolve_placeholders(
-            self._read_json(self._file_rel(Settings.UPSTREAM_FILE)),
-            repo_root=self.project_path,
-        )
+        # Load upstream config
+        raw_upstream = self._read_json(self._file_rel(Settings.UPSTREAM_FILE))
         self.upstreams = [
             UpstreamEntry(**entry)
             for entry in raw_upstream.get("upstreams", [])
         ]
 
-        # Load and resolve forward config
-        raw_forward = resolve_placeholders(
-            self._read_json(self._file_rel(Settings.FORWARD_FILE)),
-            repo_root=self.project_path,
-        )
+        # Load forward config
+        raw_forward = self._read_json(self._file_rel(Settings.FORWARD_FILE))
         self.forwards = [
             ForwardRule(**rule)
             for rule in raw_forward.get("forwards", [])
         ]
 
-        # Load and resolve automation config
-        raw_automation = resolve_placeholders(
-            self._read_json(self._file_rel(Settings.AUTOMATION_FILE)),
-            repo_root=self.project_path,
-        )
+        # Load automation config
+        raw_automation = self._read_json(self._file_rel(Settings.AUTOMATION_FILE))
         self.automation = AutomationConfig(**raw_automation)
 
         self._snapshot_mtimes()

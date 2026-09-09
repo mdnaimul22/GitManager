@@ -13,10 +13,9 @@ from src.helpers import time_now_iso
 from src.schema import (
     ProjectMeta, ProjectDetail, ProjectCreate, ProjectUpdate,
     UpstreamEntry, ForwardRule, GitConfig, ScheduleConfig, AutomationConfig,
+    generate_hash_id,
 )
 
-
-from src.core.resolver import resolve_placeholders
 
 # ── Shared Config Loader ──────────────────────────────────────────────────────
 
@@ -26,23 +25,40 @@ def load_project_configs(
     resolve: bool = True,
 ) -> tuple[list[UpstreamEntry], list[ForwardRule], AutomationConfig]:
     """
-    Load per-project config files.
-
-    If resolve=True (for worker thread/runtime), replaces {REPO_ROOT} and
-    normalizes relative paths to absolute paths.
-    If resolve=False (for API/UI display), preserves clean relative paths.
+    Load per-project config files directly with clean relative paths.
     """
     raw_upstream = _read_project_json(project_id, Settings.UPSTREAM_FILE)
     raw_forward = _read_project_json(project_id, Settings.FORWARD_FILE)
     raw_automation = _read_project_json(project_id, Settings.AUTOMATION_FILE)
 
-    if resolve:
-        raw_upstream = resolve_placeholders(raw_upstream, repo_root=project_path)
-        raw_forward = resolve_placeholders(raw_forward, repo_root=project_path)
-        raw_automation = resolve_placeholders(raw_automation, repo_root=project_path)
+    raw_upstreams = raw_upstream.get("upstreams", [])
+    upstreams = [UpstreamEntry(**u) for u in raw_upstreams]
 
-    upstreams = [UpstreamEntry(**u) for u in raw_upstream.get("upstreams", [])]
-    forwards = [ForwardRule(**f) for f in raw_forward.get("forwards", [])]
+    # Map upstream IDs, names, and paths to link legacy forwards without upstream_id
+    up_by_name = {u.name: u.upstream_id for u in upstreams if u.name}
+    up_by_path = {u.path.rstrip("/"): u.upstream_id for u in upstreams if u.path}
+    up_by_id = {u.upstream_id: u.name for u in upstreams if u.upstream_id}
+
+    raw_forwards = raw_forward.get("forwards", [])
+    forwards: list[ForwardRule] = []
+    for f in raw_forwards:
+        rule = ForwardRule(**f)
+        if not rule.upstream_id:
+            if rule.project_name and rule.project_name in up_by_name:
+                rule.upstream_id = up_by_name[rule.project_name]
+            elif rule.from_path:
+                src_clean = rule.from_path.rstrip("/")
+                for up_path, up_id in up_by_path.items():
+                    if src_clean == up_path or src_clean.startswith(up_path + "/"):
+                        rule.upstream_id = up_id
+                        break
+        if rule.upstream_id and rule.upstream_id in up_by_id:
+            rule.project_name = up_by_id[rule.upstream_id]
+        elif rule.upstream_id and rule.upstream_id not in up_by_id:
+            rule.upstream_id = ""
+            rule.project_name = ""
+        forwards.append(rule)
+
     automation = AutomationConfig(**raw_automation)
 
     return upstreams, forwards, automation
@@ -193,14 +209,82 @@ def update_project(project_id: str, data: ProjectUpdate) -> ProjectDetail | None
 
         # Update upstream.json
         if data.upstreams is not None:
+            up_id_name_map = {}
+            for u in data.upstreams:
+                if not u.upstream_id:
+                    u.upstream_id = generate_hash_id()
+                up_id_name_map[u.upstream_id] = u.project_name
+
             _write_project_json(project_id, Settings.UPSTREAM_FILE, {
                 "upstreams": [u.model_dump() for u in data.upstreams]
             })
 
-        # Update forward.json
+            # If forwards was not included in this update, ensure existing forward.json
+            # is updated if any upstream was renamed or deleted
+            if data.forwards is None:
+                existing_fwd_raw = _read_project_json(project_id, Settings.FORWARD_FILE).get("forwards", [])
+                if existing_fwd_raw:
+                    updated_any = False
+                    synced_forwards = []
+                    for raw_f in existing_fwd_raw:
+                        f_rule = ForwardRule(**raw_f)
+                        if f_rule.upstream_id:
+                            if f_rule.upstream_id in up_id_name_map:
+                                if f_rule.project_name != up_id_name_map[f_rule.upstream_id]:
+                                    f_rule.project_name = up_id_name_map[f_rule.upstream_id]
+                                    updated_any = True
+                            else:
+                                f_rule.upstream_id = ""
+                                f_rule.project_name = ""
+                                updated_any = True
+                        synced_forwards.append(f_rule)
+                    if updated_any:
+                        _write_project_json(project_id, Settings.FORWARD_FILE, {
+                            "forwards": [f.model_dump(by_alias=True) for f in synced_forwards]
+                        })
+
+        # Update forward.json with deduplication
         if data.forwards is not None:
+            # Map upstream_id to current project_name if upstreams were provided
+            current_up_map = {}
+            if data.upstreams is not None:
+                current_up_map = {u.upstream_id: u.project_name for u in data.upstreams if u.upstream_id}
+            else:
+                existing_ups = _read_project_json(project_id, Settings.UPSTREAM_FILE).get("upstreams", [])
+                for u in existing_ups:
+                    uid = u.get("upstream_id") or u.get("id")
+                    uname = u.get("project_name") or u.get("name")
+                    if uid and uname:
+                        current_up_map[uid] = uname
+
+            seen_ids = set()
+            seen_rules = set()
+            clean_forwards = []
+            for f in data.forwards:
+                if not f.forward_id:
+                    f.forward_id = generate_hash_id()
+
+                if f.forward_id in seen_ids:
+                    continue
+                seen_ids.add(f.forward_id)
+
+                if f.upstream_id and f.upstream_id in current_up_map:
+                    f.project_name = current_up_map[f.upstream_id]
+                elif f.upstream_id and f.upstream_id not in current_up_map:
+                    f.upstream_id = ""
+                    f.project_name = ""
+
+                # Deduplicate identical rules (only when paths are specified)
+                if f.from_path and f.to_path:
+                    key = (f.upstream_id, f.from_path, f.to_path)
+                    if key in seen_rules:
+                        continue
+                    seen_rules.add(key)
+
+                clean_forwards.append(f)
+
             _write_project_json(project_id, Settings.FORWARD_FILE, {
-                "forwards": [f.model_dump(by_alias=True) for f in data.forwards]
+                "forwards": [f.model_dump(by_alias=True) for f in clean_forwards]
             })
 
         # Update automation.json

@@ -20,6 +20,11 @@ from src.schema.models import ProjectUpdate, WebhookConfig
 class TestWebhooksAPI:
     """Integration tests for webhook instant sync endpoint."""
 
+    @pytest.fixture(autouse=True)
+    def mock_trigger(self, monkeypatch):
+        from src.core import WorkerPool
+        monkeypatch.setattr(WorkerPool, "trigger_now", lambda self, pid: True)
+
     def test_webhook_nonexistent_project_returns_404(self, client):
         resp = client.post("/api/webhooks/nonexistent-project", json={"ref": "refs/heads/main"})
         assert resp.status_code == 404

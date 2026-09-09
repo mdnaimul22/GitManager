@@ -156,6 +156,14 @@
         }
         .entry-row input:focus { border-color: var(--accent); background: var(--bg-root); }
         .entry-row input::placeholder { color: var(--text-muted); font-size: .74rem; }
+        .entry-row select {
+            flex: 1; min-width: 0; background: transparent; border: 1px solid transparent;
+            color: var(--text-value); font-size: .76rem; padding: 2px 4px;
+            border-radius: 3px; outline: none; cursor: pointer;
+            font-family: 'JetBrains Mono', monospace; transition: border-color .15s;
+        }
+        .entry-row select:focus { border-color: var(--accent); background: var(--bg-root); }
+        .entry-row select option { background: var(--bg-sidebar); color: var(--text-value); }
         .entry-row .sep { width: 1px; height: 16px; background: var(--border); flex-shrink: 0; }
 
         .commit-row {
@@ -447,7 +455,7 @@
                                 <div>
                                     <div class="entry-row">
                                         <div class="fi"><span class="fl">Name</span>
-                                            <input x-model="u.name" placeholder="upstream-name"></div>
+                                            <input x-model="u.project_name" @input="u.name = u.project_name" placeholder="upstream-name"></div>
                                         <div class="sep"></div>
                                         <div class="fi" style="flex:1.5;"><span class="fl">URL</span>
                                             <input x-model="u.url" placeholder="https://github.com/user/repo.git"></div>
@@ -458,13 +466,17 @@
                                         <div class="fi"><span class="fl">Path</span>
                                             <input x-model="u.path" placeholder="{REPO_ROOT}/.dir"></div>
                                         <div class="sep"></div>
+                                        <button class="btn-outline" style="padding:1px 6px;font-size:.66rem;border-radius:3px;white-space:nowrap;"
+                                                @click="addForward(u.upstream_id || u.id)"
+                                                title="Add Forward for this upstream">+ Forward</button>
+                                        <div class="sep"></div>
                                         <div class="toggle-sm" :class="{ active: u.pull }"
                                              @click="u.pull = !u.pull" title="Pull"></div>
                                         <button class="btn-rm" @click="removeUpstream(i)">✕</button>
                                     </div>
                                     <div class="commit-row">
                                         <span class="fl">commit</span>
-                                        <input x-model="activeProject.git.commit_messages.upstreams[u.name || 'default']"
+                                        <input x-model="activeProject.git.commit_messages.upstreams[u.project_name || u.name || 'default']"
                                                placeholder="sync: auto-update from {upstream_name} [{datetime}]">
                                     </div>
                                 </div>
@@ -480,9 +492,23 @@
                                     <div class="cat-header">
                                         <span x-text="catName"></span>
                                         <span class="cat-cnt" x-text="'(' + groupedForwards[catName].length + ')'"></span>
+                                        <button class="btn-outline" style="margin-left:auto;padding:1px 6px;font-size:.66rem;border-radius:3px;"
+                                                @click="addForward(catName !== 'other' ? (((activeProject.upstreams || []).find(u => (u.project_name || u.name) === catName) || {}).upstream_id || ((activeProject.upstreams || []).find(u => (u.project_name || u.name) === catName) || {}).id) : null)"
+                                                title="Add forward for this group">+ Forward</button>
                                     </div>
-                                    <template x-for="f in groupedForwards[catName]" :key="f._idx">
+                                    <template x-for="f in groupedForwards[catName]" :key="f.forward_id || f.id || f._idx">
                                         <div class="entry-row">
+                                            <div class="fi" style="flex:0.85;" x-show="activeProject.upstreams && activeProject.upstreams.length > 0">
+                                                <span class="fl">Upstream</span>
+                                                <select x-model="activeProject.forwards[f._idx].upstream_id"
+                                                        @change="onForwardUpstreamChange(f._idx)">
+                                                    <option value="">(Other / Custom)</option>
+                                                    <template x-for="u in activeProject.upstreams" :key="u.upstream_id || u.id || u.project_name">
+                                                        <option :value="u.upstream_id || u.id" x-text="u.project_name || u.name" :selected="activeProject.forwards[f._idx].upstream_id === (u.upstream_id || u.id)"></option>
+                                                    </template>
+                                                </select>
+                                            </div>
+                                            <div class="sep" x-show="activeProject.upstreams && activeProject.upstreams.length > 0"></div>
                                             <div class="fi" style="flex:1.2;"><span class="fl">From</span>
                                                 <input x-model="activeProject.forwards[f._idx].from"
                                                        style="font-family:'JetBrains Mono',monospace;font-size:.76rem;"

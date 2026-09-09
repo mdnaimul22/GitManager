@@ -52,7 +52,7 @@ class TestGetProject:
         data = resp.json()
         assert "upstreams" in data
         assert len(data["upstreams"]) == 1
-        assert data["upstreams"][0]["name"] == "upstream-a"
+        assert data["upstreams"][0]["project_name"] == "upstream-a"
 
     def test_get_includes_forwards(self, auth_client):
         resp = auth_client.get("/api/projects/test-project")
@@ -134,7 +134,7 @@ class TestUpdateProject:
         })
         assert resp.status_code == 200
         assert len(resp.json()["upstreams"]) == 1
-        assert resp.json()["upstreams"][0]["name"] == "new-up"
+        assert resp.json()["upstreams"][0]["project_name"] == "new-up"
 
     def test_update_forwards_count(self, auth_client):
         forwards = [
@@ -160,6 +160,80 @@ class TestUpdateProject:
         assert put_resp.status_code == 200
         assert get_resp.status_code == 200
         assert len(put_resp.json()["forwards"]) == len(get_resp.json()["forwards"])
+
+    def test_update_upstream_name_syncs_forwards_in_api_response(self, auth_client):
+        c_resp = auth_client.post("/api/projects", json={"name": "API Sync Proj", "path": "/tmp/api-sync-proj"})
+        pid = c_resp.json()["id"]
+        try:
+            put_resp = auth_client.put(f"/api/projects/{pid}", json={
+                "upstreams": [
+                    {"project_name": "old-name", "path": "/tmp/.up", "url": "https://example.com/repo.git"}
+                ]
+            })
+            up_id = put_resp.json()["upstreams"][0]["upstream_id"]
+
+            auth_client.put(f"/api/projects/{pid}", json={
+                "forwards": [
+                    {"from": "/x/a", "to": "/y/a", "upstream_id": up_id, "project_name": "old-name", "enabled": True}
+                ]
+            })
+
+            renamed_resp = auth_client.put(f"/api/projects/{pid}", json={
+                "upstreams": [
+                    {"project_name": "renamed-upstream", "upstream_id": up_id, "path": "/tmp/.up", "url": "https://example.com/repo.git"}
+                ]
+            })
+            assert renamed_resp.status_code == 200
+            data = renamed_resp.json()
+            assert data["upstreams"][0]["project_name"] == "renamed-upstream"
+            assert data["forwards"][0]["project_name"] == "renamed-upstream"
+            assert data["forwards"][0]["upstream_id"] == up_id
+        finally:
+            auth_client.delete(f"/api/projects/{pid}")
+
+    def test_delete_upstream_via_api_unlinks_forwards(self, auth_client):
+        c_resp = auth_client.post("/api/projects", json={"name": "API Del Up Proj", "path": "/tmp/api-del-up-proj"})
+        pid = c_resp.json()["id"]
+        try:
+            put_resp = auth_client.put(f"/api/projects/{pid}", json={
+                "upstreams": [
+                    {"project_name": "to-delete", "path": "/tmp/.del", "url": "https://example.com/del.git"}
+                ],
+                "forwards": [
+                    {"from": "/del/src", "to": "/del/dst", "enabled": True}
+                ]
+            })
+            up_id = put_resp.json()["upstreams"][0]["upstream_id"]
+
+            del_resp = auth_client.put(f"/api/projects/{pid}", json={"upstreams": []})
+            assert del_resp.status_code == 200
+            assert len(del_resp.json()["upstreams"]) == 0
+            assert del_resp.json()["forwards"][0]["upstream_id"] == ""
+            assert del_resp.json()["forwards"][0]["project_name"] == ""
+        finally:
+            auth_client.delete(f"/api/projects/{pid}")
+
+    def test_delete_forward_via_api(self, auth_client):
+        c_resp = auth_client.post("/api/projects", json={"name": "API Del Fwd Proj", "path": "/tmp/api-del-fwd-proj"})
+        pid = c_resp.json()["id"]
+        try:
+            auth_client.put(f"/api/projects/{pid}", json={
+                "forwards": [
+                    {"from": "/f/1", "to": "/t/1", "enabled": True},
+                    {"from": "/f/2", "to": "/t/2", "enabled": True},
+                ]
+            })
+
+            resp = auth_client.put(f"/api/projects/{pid}", json={
+                "forwards": [
+                    {"from": "/f/1", "to": "/t/1", "enabled": True}
+                ]
+            })
+            assert resp.status_code == 200
+            assert len(resp.json()["forwards"]) == 1
+            assert resp.json()["forwards"][0]["from"] == "/f/1"
+        finally:
+            auth_client.delete(f"/api/projects/{pid}")
 
     def test_update_nonexistent_returns_404(self, auth_client):
         resp = auth_client.put("/api/projects/nonexistent-id", json={
