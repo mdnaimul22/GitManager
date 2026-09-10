@@ -10,8 +10,9 @@ import hashlib
 from fastapi import APIRouter, Request, HTTPException, status
 
 from src.schema import ProjectDetail
-from src.services import get_project
-from src.core import WorkerPool
+from src.services import ProjectService, WorkerPool
+
+_svc = ProjectService()
 
 router = APIRouter(
     prefix="/api/webhooks",
@@ -38,7 +39,7 @@ async def api_trigger_webhook(project_id: str, request: Request):
     """
     Handle incoming webhook event (e.g. GitHub push event) to trigger instant sync.
     """
-    project: ProjectDetail | None = get_project(project_id)
+    project: ProjectDetail | None = _svc.get(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 

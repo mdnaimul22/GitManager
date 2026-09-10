@@ -2,27 +2,22 @@
 Project Service unit and integration tests.
 
 Covers:
-- load_project_configs: Parsing and resolution of per-project config files
-- create_project, update_project, delete_project, update_project_status
+- ProjectService.load_configs: Parsing and resolution of per-project config files
+- ProjectService.create/update/delete/update_status
 """
 
 import pytest
 from src.schema.models import ProjectCreate, ProjectUpdate, UpstreamEntry, ForwardRule
-from src.services.project import (
-    load_project_configs,
-    create_project,
-    get_project,
-    update_project,
-    delete_project,
-    update_project_status,
-)
+from src.services.project import ProjectService
+
+_svc = ProjectService()
 
 
 class TestProjectService:
     """Tests for project service configuration and registry management."""
 
     def test_load_project_configs_returns_tuple_of_three(self):
-        upstreams, forwards, automation = load_project_configs(
+        upstreams, forwards, automation = _svc.load_configs(
             "test-project", "/tmp/test-project"
         )
         assert isinstance(upstreams, list)
@@ -31,39 +26,39 @@ class TestProjectService:
         assert len(forwards) == 2
 
     def test_load_nonexistent_project_returns_empty_defaults(self):
-        upstreams, forwards, automation = load_project_configs(
+        upstreams, forwards, automation = _svc.load_configs(
             "nonexistent-xyz", "/tmp/nowhere"
         )
         assert upstreams == []
         assert forwards == []
 
     def test_create_and_delete_project(self):
-        meta = create_project(ProjectCreate(
+        meta = _svc.create(ProjectCreate(
             name="Service Test Proj",
             path="/tmp/service-test-proj",
         ))
         assert meta.id.startswith("service-test-proj")
 
-        detail = get_project(meta.id)
+        detail = _svc.get(meta.id)
         assert detail is not None
         assert detail.name == "Service Test Proj"
 
-        deleted = delete_project(meta.id)
+        deleted = _svc.delete(meta.id)
         assert deleted is True
 
-        assert get_project(meta.id) is None
+        assert _svc.get(meta.id) is None
 
     def test_update_project_status(self):
-        update_project_status("test-project", status="running", last_sync="2026-09-07T00:00:00")
-        proj = get_project("test-project")
+        _svc.update_status("test-project", status="running", last_sync="2026-09-07T00:00:00")
+        proj = _svc.get("test-project")
         assert proj.status == "running"
         assert proj.last_sync == "2026-09-07T00:00:00"
 
         # Restore
-        update_project_status("test-project", status="idle", last_sync=None)
+        _svc.update_status("test-project", status="idle", last_sync=None)
 
     def test_update_project_assigns_8char_hash_ids_and_deduplicates_forwards(self):
-        meta = create_project(ProjectCreate(
+        meta = _svc.create(ProjectCreate(
             name="Hash ID Test Proj",
             path="/tmp/hash-id-test-proj",
         ))
@@ -72,12 +67,12 @@ class TestProjectService:
             f1 = ForwardRule(from_path=".data/up1/skills", to_path="skills/up1", upstream_id=up1.id)
             f_duplicate = ForwardRule(from_path=".data/up1/skills", to_path="skills/up1", upstream_id=up1.id)
 
-            update_project(meta.id, ProjectUpdate(
+            _svc.update(meta.id, ProjectUpdate(
                 upstreams=[up1],
                 forwards=[f1, f_duplicate],
             ))
 
-            detail = get_project(meta.id)
+            detail = _svc.get(meta.id)
             assert detail is not None
             assert len(detail.upstreams) == 1
             assert len(detail.upstreams[0].id) == 8
@@ -85,4 +80,4 @@ class TestProjectService:
             assert detail.forwards[0].upstream_id == detail.upstreams[0].id
             assert len(detail.forwards[0].id) == 8
         finally:
-            delete_project(meta.id)
+            _svc.delete(meta.id)

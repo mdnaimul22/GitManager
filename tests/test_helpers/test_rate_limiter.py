@@ -7,7 +7,7 @@ Covers:
 """
 
 import pytest
-from src.core.rate_limiter import _is_scanner_path, _is_whitelisted
+from src.helpers.rate_limiter import _is_scanner_path, _is_whitelisted
 
 
 class TestRateLimiterHelpers:

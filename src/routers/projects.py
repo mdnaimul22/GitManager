@@ -9,11 +9,7 @@ a threadpool, keeping the event loop unblocked.
 from fastapi import APIRouter, Depends, HTTPException
 
 from src.schema import ProjectMeta, ProjectDetail, ProjectCreate, ProjectUpdate
-from src.services import (
-    list_projects, get_project, create_project,
-    update_project, delete_project,
-)
-from src.core import WorkerPool
+from src.services import ProjectService, WorkerPool
 from .auth import require_auth
 
 router = APIRouter(
@@ -21,6 +17,8 @@ router = APIRouter(
     tags=["projects"],
     dependencies=[Depends(require_auth)],
 )
+
+_svc = ProjectService()
 
 # Shared worker pool — injected from main.py via app.state
 _pool: WorkerPool | None = None
@@ -43,7 +41,7 @@ def _get_pool() -> WorkerPool:
 @router.get("", response_model=list[ProjectMeta])
 def api_list_projects():
     """List all projects with live status from worker pool."""
-    projects = list_projects()
+    projects = _svc.list_all()
     pool = _get_pool()
     for p in projects:
         if pool.is_running(p.id):
@@ -54,13 +52,13 @@ def api_list_projects():
 @router.post("", response_model=ProjectMeta, status_code=201)
 def api_create_project(data: ProjectCreate):
     """Create a new project."""
-    return create_project(data)
+    return _svc.create(data)
 
 
 @router.get("/{project_id}", response_model=ProjectDetail)
 def api_get_project(project_id: str):
     """Get full project config."""
-    project = get_project(project_id)
+    project = _svc.get(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     pool = _get_pool()
@@ -72,7 +70,7 @@ def api_get_project(project_id: str):
 @router.put("/{project_id}", response_model=ProjectDetail)
 def api_update_project(project_id: str, data: ProjectUpdate):
     """Update project config (upstreams, forwards, git, schedule)."""
-    result = update_project(project_id, data)
+    result = _svc.update(project_id, data)
     if not result:
         raise HTTPException(status_code=404, detail="Project not found")
     pool = _get_pool()
@@ -86,7 +84,7 @@ def api_delete_project(project_id: str):
     """Delete a project and stop its worker."""
     pool = _get_pool()
     pool.stop(project_id)
-    if not delete_project(project_id):
+    if not _svc.delete(project_id):
         raise HTTPException(status_code=404, detail="Project not found")
 
 
@@ -95,7 +93,7 @@ def api_delete_project(project_id: str):
 @router.post("/{project_id}/run")
 def api_run_project(project_id: str):
     """Start or trigger sync for a project."""
-    projects = list_projects()
+    projects = _svc.list_all()
     meta = next((p for p in projects if p.id == project_id), None)
     if not meta:
         raise HTTPException(status_code=404, detail="Project not found")

@@ -16,7 +16,7 @@ from starlette.responses import Response
 
 from src.config import Settings, setup_logger
 
-logger = setup_logger(Settings.LOG_DIR / "security.log", name="gitmanager.core.rate_limiter")
+logger = setup_logger(Settings.LOG_DIR / "security.log", name="gitmanager.helpers.rate_limiter")
 
 # ── Scanner trap paths ────────────────────────────────────────────────────────
 # Any request to these patterns = instant ban

@@ -2,21 +2,17 @@
 Forward Service unit and integration tests.
 
 Covers:
-- Incremental file copy optimizations (_copy_if_newer, _incremental_copy_function)
-- forward_skills execution
-- cleanup_orphans: disk deletion, git index un-tracking, and manual skills preservation
+- Incremental file copy optimizations (ForwardEngine.should_copy, ForwardEngine.incremental_copy)
+- ForwardService.forward execution
+- ForwardService.cleanup_orphans: disk deletion, git index un-tracking, and manual skills preservation
 """
 
 import subprocess
 import time
 import pytest
 from src.schema.models import ForwardRule, UpstreamEntry
-from src.services.forward import (
-    _copy_if_newer,
-    _incremental_copy_function,
-    forward_skills,
-    cleanup_orphans,
-)
+from src.core.forwarder import ForwardEngine
+from src.services.forward import ForwardService
 
 
 class TestIncrementalCopy:
@@ -27,7 +23,9 @@ class TestIncrementalCopy:
         dst = tmp_path / "dst.txt"
         src.write_text("hello")
 
-        assert _copy_if_newer(str(src), str(dst)) is True
+        assert ForwardEngine.should_copy(str(src), str(dst)) is True
+        import shutil
+        shutil.copy2(str(src), str(dst))
         assert dst.read_text() == "hello"
 
     def test_copy_if_newer_skips_unchanged(self, tmp_path):
@@ -40,7 +38,7 @@ class TestIncrementalCopy:
         time.sleep(0.05)
         dst.write_text("hello")
 
-        assert _copy_if_newer(str(src), str(dst)) is False
+        assert ForwardEngine.should_copy(str(src), str(dst)) is False
 
     def test_copy_if_newer_copies_when_src_newer(self, tmp_path):
         src = tmp_path / "src.txt"
@@ -49,10 +47,11 @@ class TestIncrementalCopy:
         time.sleep(0.05)
         src.write_text("new")
 
-        assert _copy_if_newer(str(src), str(dst)) is True
+        assert ForwardEngine.should_copy(str(src), str(dst)) is True
+        ForwardEngine.incremental_copy(str(src), str(dst))
         assert dst.read_text() == "new"
 
-    def test_incremental_copy_function_returns_dst(self, tmp_path):
+    def test_incremental_copy_skips_unchanged(self, tmp_path):
         src = tmp_path / "src.txt"
         dst = tmp_path / "dst.txt"
         src.write_text("same")
@@ -60,12 +59,12 @@ class TestIncrementalCopy:
         time.sleep(0.05)
         dst.write_text("same")
 
-        result = _incremental_copy_function(str(src), str(dst))
+        result = ForwardEngine.incremental_copy(str(src), str(dst))
         assert result == str(dst)
 
 
 class TestOrphanCleanup:
-    """cleanup_orphans removes dead upstream skills from disk and git index."""
+    """ForwardService.cleanup_orphans removes dead upstream skills from disk and git index."""
 
     def test_orphan_detected_when_rule_removed(self):
         previous = {"/dst/skill-a", "/dst/skill-b", "/dst/skill-c"}
@@ -81,7 +80,7 @@ class TestOrphanCleanup:
         previous = {str(orphan_dir)}
         current = set()
 
-        removed = cleanup_orphans(previous, current)
+        removed = ForwardService().cleanup_orphans(previous, current)
         assert "orphan-skill" in removed
         assert not orphan_dir.exists()
 
@@ -101,7 +100,7 @@ class TestOrphanCleanup:
         # Run cleanup with repo_root
         previous = {str(skill)}
         current = set()
-        removed = cleanup_orphans(previous, current, repo_root=str(repo))
+        removed = ForwardService(repo_root=str(repo)).cleanup_orphans(previous, current)
 
         assert "ghost-skill" in removed
         assert not skill.exists()
@@ -130,7 +129,7 @@ class TestOrphanCleanup:
         current = {str(managed)}
         previous = {str(managed)}
 
-        removed = cleanup_orphans(previous, current)
+        removed = ForwardService().cleanup_orphans(previous, current)
         assert len(removed) == 0
         assert manual.exists(), "User manual skill must survive"
         assert managed.exists()
@@ -189,7 +188,8 @@ class TestUpstreamSourceVerification:
             enabled=True,
         )
 
-        copied, memory = forward_skills([rule], repo_root=str(tmp_path / "repo"), upstreams=[upstream])
+        svc = ForwardService(repo_root=str(tmp_path / "repo"))
+        copied, memory = svc.forward([rule], upstreams=[upstream])
 
         # 4. Verify helpers/api.py was dynamically checked out and forwarded
         assert "api.py" in copied
@@ -233,7 +233,8 @@ class TestUpstreamSourceVerification:
         fwd_logger.addHandler(caplog.handler)
         try:
             with caplog.at_level(logging.WARNING):
-                copied, memory = forward_skills([rule], repo_root=str(tmp_path / "repo"), upstreams=[upstream])
+                svc = ForwardService(repo_root=str(tmp_path / "repo"))
+                copied, memory = svc.forward([rule], upstreams=[upstream])
         finally:
             fwd_logger.removeHandler(caplog.handler)
 
@@ -251,7 +252,8 @@ class TestUpstreamSourceVerification:
         fwd_logger.addHandler(caplog.handler)
         try:
             with caplog.at_level(logging.WARNING):
-                copied, memory = forward_skills([rule], repo_root=str(tmp_path))
+                svc = ForwardService(repo_root=str(tmp_path))
+                copied, memory = svc.forward([rule])
         finally:
             fwd_logger.removeHandler(caplog.handler)
 

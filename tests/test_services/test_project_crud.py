@@ -21,25 +21,21 @@ from src.schema.models import (
     UpstreamEntry,
     WebhookConfig,
 )
-from src.services.project import (
-    create_project,
-    delete_project,
-    get_project,
-    load_project_configs,
-    update_project,
-)
+from src.services.project import ProjectService
+
+_svc = ProjectService()
 
 
 @pytest.fixture
 def clean_test_project():
     """Create a temporary project for thorough CRUD testing and clean up afterwards."""
-    meta = create_project(ProjectCreate(
+    meta = _svc.create(ProjectCreate(
         name="CRUD Integrity Test Project",
         path="/tmp/crud-integrity-test-proj",
     ))
     proj_id = meta.id
     yield proj_id
-    delete_project(proj_id)
+    _svc.delete(proj_id)
 
 
 class TestProjectCrudIntegrity:
@@ -83,7 +79,8 @@ class TestProjectCrudIntegrity:
             to_path="skills/storage/heygen",
         )
 
-        update_project(proj_id, ProjectUpdate(
+        
+        _svc.update(proj_id, ProjectUpdate(
             upstreams=[up1, up2],
             forwards=[fwd1, fwd2],
             git=GitConfig(branch="master", auto_push=False),
@@ -155,7 +152,8 @@ class TestProjectCrudIntegrity:
         fwd2 = ForwardRule(project_name="heygen-com", upstream_id=up2.upstream_id, from_path=".data/up2/b", to_path="skills/b")
         fwd3 = ForwardRule(project_name="heygen-com", upstream_id=up2.upstream_id, from_path=".data/up2/c", to_path="skills/c")
 
-        update_project(proj_id, ProjectUpdate(
+        
+        _svc.update(proj_id, ProjectUpdate(
             upstreams=[up1, up2],
             forwards=[fwd1, fwd2, fwd3],
         ))
@@ -168,7 +166,8 @@ class TestProjectCrudIntegrity:
             url=up2.url,
             branch=up2.branch,
         )
-        update_project(proj_id, ProjectUpdate(
+        
+        _svc.update(proj_id, ProjectUpdate(
             upstreams=[up1, up2_renamed],
         ))
 
@@ -206,36 +205,43 @@ class TestProjectCrudIntegrity:
             sparse=True,
             blobless=True,
         )
-        update_project(proj_id, ProjectUpdate(upstreams=[up]))
+        
+        _svc.update(proj_id, ProjectUpdate(upstreams=[up]))
 
         # Edit branch
         up.branch = "feature/skills-v2"
-        update_project(proj_id, ProjectUpdate(upstreams=[up]))
+        
+        _svc.update(proj_id, ProjectUpdate(upstreams=[up]))
         assert read_json(f"{Settings.RAW_DATA_DIR}/{proj_id}/upstream.json")["upstreams"][0]["branch"] == "feature/skills-v2"
 
         # Edit path
         up.path = ".data/new_path"
-        update_project(proj_id, ProjectUpdate(upstreams=[up]))
+        
+        _svc.update(proj_id, ProjectUpdate(upstreams=[up]))
         assert read_json(f"{Settings.RAW_DATA_DIR}/{proj_id}/upstream.json")["upstreams"][0]["path"] == ".data/new_path"
 
         # Edit url
         up.url = "https://github.com/new-url/repo.git"
-        update_project(proj_id, ProjectUpdate(upstreams=[up]))
+        
+        _svc.update(proj_id, ProjectUpdate(upstreams=[up]))
         assert read_json(f"{Settings.RAW_DATA_DIR}/{proj_id}/upstream.json")["upstreams"][0]["url"] == "https://github.com/new-url/repo.git"
 
         # Toggle pull
         up.pull = False
-        update_project(proj_id, ProjectUpdate(upstreams=[up]))
+        
+        _svc.update(proj_id, ProjectUpdate(upstreams=[up]))
         assert read_json(f"{Settings.RAW_DATA_DIR}/{proj_id}/upstream.json")["upstreams"][0]["pull"] is False
 
         # Toggle sparse
         up.sparse = False
-        update_project(proj_id, ProjectUpdate(upstreams=[up]))
+        
+        _svc.update(proj_id, ProjectUpdate(upstreams=[up]))
         assert read_json(f"{Settings.RAW_DATA_DIR}/{proj_id}/upstream.json")["upstreams"][0]["sparse"] is False
 
         # Toggle blobless
         up.blobless = False
-        update_project(proj_id, ProjectUpdate(upstreams=[up]))
+        
+        _svc.update(proj_id, ProjectUpdate(upstreams=[up]))
         assert read_json(f"{Settings.RAW_DATA_DIR}/{proj_id}/upstream.json")["upstreams"][0]["blobless"] is False
 
     def test_edit_each_individual_forward_field(self, clean_test_project):
@@ -252,29 +258,34 @@ class TestProjectCrudIntegrity:
             from_path=".data/one/skills",
             to_path="skills/storage/one",
         )
-        update_project(proj_id, ProjectUpdate(upstreams=[up1, up2], forwards=[fwd]))
+        
+        _svc.update(proj_id, ProjectUpdate(upstreams=[up1, up2], forwards=[fwd]))
 
         # Edit from_path
         fwd.from_path = ".data/one/new_subpath"
-        update_project(proj_id, ProjectUpdate(forwards=[fwd]))
+        
+        _svc.update(proj_id, ProjectUpdate(forwards=[fwd]))
         data = read_json(f"{Settings.RAW_DATA_DIR}/{proj_id}/forward.json")["forwards"][0]
         assert data["from"] == ".data/one/new_subpath"
 
         # Edit to_path
         fwd.to_path = "skills/storage/custom_dest"
-        update_project(proj_id, ProjectUpdate(forwards=[fwd]))
+        
+        _svc.update(proj_id, ProjectUpdate(forwards=[fwd]))
         data = read_json(f"{Settings.RAW_DATA_DIR}/{proj_id}/forward.json")["forwards"][0]
         assert data["to"] == "skills/storage/custom_dest"
 
         # Toggle enabled
         fwd.enabled = False
-        update_project(proj_id, ProjectUpdate(forwards=[fwd]))
+        
+        _svc.update(proj_id, ProjectUpdate(forwards=[fwd]))
         data = read_json(f"{Settings.RAW_DATA_DIR}/{proj_id}/forward.json")["forwards"][0]
         assert data["enabled"] is False
 
         # Reassign to up2 (switch upstream)
         fwd.upstream_id = up2.upstream_id
-        update_project(proj_id, ProjectUpdate(forwards=[fwd]))
+        
+        _svc.update(proj_id, ProjectUpdate(forwards=[fwd]))
         data = read_json(f"{Settings.RAW_DATA_DIR}/{proj_id}/forward.json")["forwards"][0]
         assert data["upstream_id"] == up2.upstream_id
         assert data["project_name"] == "up-two"  # auto-synced!
@@ -289,13 +300,15 @@ class TestProjectCrudIntegrity:
         fwd_keep = ForwardRule(project_name="keep-me", upstream_id=up1.upstream_id, from_path=".data/keep/s", to_path="skills/keep")
         fwd_del = ForwardRule(project_name="delete-me", upstream_id=up2.upstream_id, from_path=".data/del/s", to_path="skills/del")
 
-        update_project(proj_id, ProjectUpdate(
+        
+        _svc.update(proj_id, ProjectUpdate(
             upstreams=[up1, up2],
             forwards=[fwd_keep, fwd_del],
         ))
 
         # ACTION: Delete up2 by submitting only up1
-        update_project(proj_id, ProjectUpdate(upstreams=[up1]))
+        
+        _svc.update(proj_id, ProjectUpdate(upstreams=[up1]))
 
         # VERIFY upstream.json
         up_disk = read_json(f"{Settings.RAW_DATA_DIR}/{proj_id}/upstream.json")
@@ -322,11 +335,13 @@ class TestProjectCrudIntegrity:
         f2 = ForwardRule(project_name="my-up", upstream_id=up.upstream_id, from_path=".data/my/2", to_path="skills/2")
         f3 = ForwardRule(project_name="my-up", upstream_id=up.upstream_id, from_path=".data/my/3", to_path="skills/3")
 
-        update_project(proj_id, ProjectUpdate(upstreams=[up], forwards=[f1, f2, f3]))
+        
+        _svc.update(proj_id, ProjectUpdate(upstreams=[up], forwards=[f1, f2, f3]))
         assert len(read_json(f"{Settings.RAW_DATA_DIR}/{proj_id}/forward.json")["forwards"]) == 3
 
         # ACTION: Delete f2
-        update_project(proj_id, ProjectUpdate(forwards=[f1, f3]))
+        
+        _svc.update(proj_id, ProjectUpdate(forwards=[f1, f3]))
 
         # VERIFY: f2 is gone, f1 and f3 remain intact
         fwd_disk = read_json(f"{Settings.RAW_DATA_DIR}/{proj_id}/forward.json")
@@ -338,7 +353,7 @@ class TestProjectCrudIntegrity:
 
     def test_delete_project_removes_directory_and_registry(self):
         """Deleting a project removes its entry from projects.json and deletes its directory on disk."""
-        meta = create_project(ProjectCreate(
+        meta = _svc.create(ProjectCreate(
             name="Temporary To Delete",
             path="/tmp/temporary-to-delete",
         ))
@@ -347,7 +362,7 @@ class TestProjectCrudIntegrity:
         assert exists(proj_dir)
 
         # Delete
-        success = delete_project(proj_id)
+        success = _svc.delete(proj_id)
         assert success is True
         assert not exists(proj_dir)
-        assert get_project(proj_id) is None
+        assert _svc.get(proj_id) is None

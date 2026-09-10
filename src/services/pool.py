@@ -1,5 +1,5 @@
 """
-Thread-based worker pool for managing per-project sync daemons.
+WorkerPool — Thread-based worker pool service for managing per-project sync daemons.
 Each project runs in its own daemon thread with an independent schedule.
 Supports instant sync triggers for webhooks and on-demand sync.
 """
@@ -9,11 +9,12 @@ import threading
 import schedule as schedule_lib
 
 from src.config import Settings, setup_logger
+from src.core import ConfigWatcher
 from src.schema import ProjectMeta
+from src.services.project import ProjectService
+from src.services.sync import SyncService
 
-from .watcher import ConfigWatcher
-
-logger = setup_logger(Settings.LOG_DIR / "core.log", name="gitmanager.core.pool")
+logger = setup_logger(Settings.LOG_DIR / "service.log", name="gitmanager.services.pool")
 
 
 class _WorkerState:
@@ -55,6 +56,7 @@ class WorkerPool:
     """
     Manages daemon threads — one per tracked project.
     Thread-safe via a single lock guarding the workers dict.
+    Orchestrates SyncService runs across active project daemons.
     """
 
     def __init__(self) -> None:
@@ -148,16 +150,14 @@ class WorkerPool:
                 return True
 
         # Not running in active pool: execute one-off background sync
-        from src.services.project import get_project
-        proj = get_project(project_id)
+        proj = ProjectService().get(project_id)
         if not proj:
             return False
 
         def _one_off_runner():
-            from src.services.sync import sync_job
             try:
                 watcher = ConfigWatcher(project_id, proj.path)
-                sync_job(watcher)
+                SyncService(watcher).run()
             except Exception as exc:
                 logger.error(f"   [{project_id}] One-off instant sync failed: {exc}")
 
@@ -183,9 +183,6 @@ class WorkerPool:
         sync_lock: threading.Lock,
     ) -> None:
         """Main loop for a single project worker thread."""
-        # Import here to avoid circular imports
-        from src.services.sync import sync_job
-
         logger.info(f"   [{project_id}] Worker loop started")
 
         # Register schedule
@@ -194,7 +191,7 @@ class WorkerPool:
         # Run initial sync
         try:
             with sync_lock:
-                sync_job(watcher)
+                SyncService(watcher).run()
         except Exception as exc:
             logger.error(f"   [{project_id}] Initial sync failed: {exc}")
 
@@ -211,7 +208,7 @@ class WorkerPool:
                 logger.info(f"   [{project_id}] Running instant sync triggered by webhook/API")
                 try:
                     with sync_lock:
-                        sync_job(watcher)
+                        SyncService(watcher).run()
                 except Exception as exc:
                     logger.error(f"   [{project_id}] Instant sync failed: {exc}")
 
@@ -224,7 +221,7 @@ class WorkerPool:
                 self._register_schedule(sched, watcher, project_id, sync_lock)
                 try:
                     with sync_lock:
-                        sync_job(watcher)
+                        SyncService(watcher).run()
                 except Exception as exc:
                     logger.error(f"   [{project_id}] Sync after reload failed: {exc}")
 
@@ -243,12 +240,10 @@ class WorkerPool:
         project_id: str,
         sync_lock: threading.Lock,
     ) -> None:
-        """Register sync_job on the per-project scheduler."""
-        from src.services.sync import sync_job
-
+        """Register SyncService on the per-project scheduler."""
         def _locked_sync():
             with sync_lock:
-                sync_job(watcher)
+                SyncService(watcher).run()
 
         run_at, interval_minutes = watcher.sched_params()
 

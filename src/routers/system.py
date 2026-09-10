@@ -1,12 +1,7 @@
-"""
-System and network endpoints.
-"""
-
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
 
-from src.schema import TunnelStatus
-from src.services import get_tunnel_status, toggle_funnel
+from src.schema import TunnelStatus, FunnelToggleRequest, FunnelToggleResponse
+from src.services import TunnelService
 from src.config import Settings, setup_logger
 from .auth import require_auth
 
@@ -19,23 +14,21 @@ router = APIRouter(
 )
 
 
-class FunnelToggleRequest(BaseModel):
-    enable: bool
-
-
 @router.get("/tunnel", response_model=TunnelStatus)
 async def api_get_tunnel_status():
     """Return the current Tailscale tunnel / funnel status."""
-    return get_tunnel_status()
+    return TunnelService().get_status()
 
 
-@router.post("/tunnel/funnel")
+@router.post("/tunnel/funnel", response_model=FunnelToggleResponse)
 async def api_toggle_funnel(req: FunnelToggleRequest):
     """Enable or disable Tailscale funnel."""
-    ok, msg = toggle_funnel(req.enable)
+    svc = TunnelService()
+    ok, msg = svc.toggle(req.enable)
     if not ok:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to toggle tunnel: {msg}",
         )
-    return {"status": "ok", "message": msg, "tunnel": get_tunnel_status()}
+    return FunnelToggleResponse(status="ok", message=msg, tunnel=svc.get_status())
+

@@ -1,5 +1,5 @@
 """
-Core WorkerPool unit tests.
+WorkerPool Service unit tests.
 
 Covers:
 - Worker start, stop, and status lifecycle
@@ -8,7 +8,7 @@ Covers:
 """
 
 import pytest
-from src.core.pool import WorkerPool
+from src.services.pool import WorkerPool
 from src.schema.models import ProjectMeta
 
 

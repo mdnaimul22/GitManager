@@ -22,7 +22,7 @@ class TestWebhooksAPI:
 
     @pytest.fixture(autouse=True)
     def mock_trigger(self, monkeypatch):
-        from src.core import WorkerPool
+        from src.services import WorkerPool
         monkeypatch.setattr(WorkerPool, "trigger_now", lambda self, pid: True)
 
     def test_webhook_nonexistent_project_returns_404(self, client):

@@ -10,7 +10,8 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from src.config import Settings, setup_logger, get_abs_path, ensure_dir
-from src.core import WorkerPool, RateLimitMiddleware
+from src.services import WorkerPool
+from src.helpers import RateLimitMiddleware
 from src.routers import projects_router, auth_router, webhooks_router, system_router, set_pool
 
 logger = setup_logger(Settings.LOG_DIR / "main.log", name="gitmanager.main")
@@ -76,7 +77,7 @@ if __name__ == "__main__":
 
     import uvicorn
 
-    def kill_port(port: int) -> None:
+    def kill_pid(port: int) -> None:
         """Gracefully stop any process on the given port, then force-kill if needed."""
         try:
             result = subprocess.run(
@@ -100,22 +101,21 @@ if __name__ == "__main__":
                     os.kill(pid, signal.SIGTERM)
                     logger.info(f"Sent SIGTERM to PID {pid} on port {port}")
                 except ProcessLookupError:
-                    pass
+                    logger.debug(f"PID {pid} already terminated during SIGTERM")
 
-            # Wait up to 5 seconds for graceful shutdown
-            for _ in range(25):
-                time.sleep(0.2)
-                check = subprocess.run(
-                    ["lsof", "-ti", f":{port}"],
-                    capture_output=True, text=True, timeout=3,
-                )
-                remaining = [
-                    int(p.strip()) for p in check.stdout.strip().splitlines()
-                    if p.strip() and int(p.strip()) != my_pid
-                ]
-                if not remaining:
-                    logger.info(f"Port {port} is now free (graceful)")
-                    return
+            # Wait briefly for graceful shutdown
+            time.sleep(1.0)
+            check = subprocess.run(
+                ["lsof", "-ti", f":{port}"],
+                capture_output=True, text=True, timeout=3,
+            )
+            remaining = [
+                int(p.strip()) for p in check.stdout.strip().splitlines()
+                if p.strip() and int(p.strip()) != my_pid
+            ]
+            if not remaining:
+                logger.info(f"Port {port} is now free (graceful)")
+                return
 
             # Phase 2: Force-kill survivors
             for pid in remaining:
@@ -123,9 +123,8 @@ if __name__ == "__main__":
                     os.kill(pid, signal.SIGKILL)
                     logger.warning(f"Force-killed PID {pid} on port {port}")
                 except ProcessLookupError:
-                    pass
+                    logger.debug(f"PID {pid} already terminated during SIGKILL")
 
-            time.sleep(0.5)
             logger.info(f"Port {port} cleanup complete")
 
         except FileNotFoundError:
@@ -140,7 +139,8 @@ if __name__ == "__main__":
         except (subprocess.TimeoutExpired, ValueError) as e:
             logger.debug(f"Port cleanup interrupted: {e}")
 
-    kill_port(Settings.API_PORT)
+    kill_port = kill_pid
+    kill_pid(Settings.API_PORT)
 
     uvicorn.run(
         "main:app",

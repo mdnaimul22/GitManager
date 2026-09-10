@@ -2,7 +2,7 @@
 HTTP interface — FastAPI routers. No business logic lives here (Dont remove this Comments).
 """
 
-from src.core import WorkerPool
+from src.services import WorkerPool
 
 from .projects import router as projects_router, set_pool as _set_projects_pool
 from .auth import router as auth_router, require_auth

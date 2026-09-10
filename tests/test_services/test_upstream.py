@@ -2,24 +2,25 @@
 Upstream Service unit tests.
 
 Covers:
-- pull_upstreams: skipping disabled upstreams, handling missing paths, branch sync
+- UpstreamService.pull: skipping disabled upstreams, handling missing paths, branch sync
 - _get_sparse_subpaths: extracting relative targets from forward rules
 - Blobless and sparse checkout optimizations
 """
 
 import pytest
+from src.core import UpstreamResolver
 from src.schema.models import UpstreamEntry, ForwardRule
-from src.services.upstream import pull_upstreams, _get_sparse_subpaths
+from src.services.upstream import UpstreamService
 
 
-class TestPullUpstreams:
+class TestUpstreamService:
     """Tests for pulling and cloning upstream repositories."""
 
     def test_skip_when_pull_disabled(self):
         upstreams = [
             UpstreamEntry(name="disabled-up", path="/tmp/.disabled-up", url="https://example.com", pull=False)
         ]
-        results, updated = pull_upstreams(upstreams)
+        results, updated = UpstreamService().pull(upstreams)
         assert results["disabled-up"] is True
         assert len(updated) == 0
 
@@ -27,7 +28,7 @@ class TestPullUpstreams:
         upstreams = [
             UpstreamEntry(name="no-url", path="/tmp/nonexistent-upstream-dir", url="", pull=True)
         ]
-        results, updated = pull_upstreams(upstreams)
+        results, updated = UpstreamService().pull(upstreams)
         assert results["no-url"] is False
 
     def test_get_sparse_subpaths_extraction(self):
@@ -59,7 +60,7 @@ class TestPullUpstreams:
             }),
         ]
 
-        subpaths = _get_sparse_subpaths(entry, forwards)
+        subpaths = UpstreamResolver.resolve_sparse_subpaths(entry, forwards)
         assert subpaths == ["docs", "skills/storage"]
 
     def test_get_sparse_subpaths_whole_repo_returns_empty(self):
@@ -75,7 +76,7 @@ class TestPullUpstreams:
                 "enabled": True,
             })
         ]
-        subpaths = _get_sparse_subpaths(entry, forwards)
+        subpaths = UpstreamResolver.resolve_sparse_subpaths(entry, forwards)
         assert subpaths == []
 
     def test_pull_upstreams_sparse_checkout_with_file_path(self, tmp_path):
@@ -110,6 +111,6 @@ class TestPullUpstreams:
             )
         ]
 
-        results, updated = pull_upstreams([entry], forwards=forwards)
+        results, updated = UpstreamService().pull([entry], forwards=forwards)
         assert results["test-sparse-file"] is True
         assert (target_dir / "helpers" / "api.py").exists()

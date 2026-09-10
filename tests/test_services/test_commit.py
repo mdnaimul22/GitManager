@@ -2,17 +2,17 @@
 Commit Service unit and integration tests.
 
 Covers:
-- classify_changes: Separates upstream-origin files and manual user edits
-- commit_and_push: Per-upstream commit templating and manual commit templating
+- CommitService.classify: Separates upstream-origin files and manual user edits
+- CommitService.commit_and_push: Per-upstream commit templating and manual commit templating
 """
 
 import subprocess
 import pytest
 from src.schema.models import CommitMessages, ForwardRule, UpstreamEntry
-from src.services.commit import classify_changes, commit_and_push
+from src.services.commit import CommitService
 
 
-class TestClassifyChanges:
+class TestCommitService:
     """Tests for classifying git status changes into upstream and manual buckets."""
 
     def test_separates_upstream_and_manual_changes(self):
@@ -30,9 +30,8 @@ class TestClassifyChanges:
             " M .agents/rules/coding-standards.md\n"
         )
 
-        upstream_changes, manual_changes = classify_changes(
-            status_output, forwards, upstreams, repo_root
-        )
+        svc = CommitService(repo_root=repo_root)
+        upstream_changes, manual_changes = svc.classify(status_output, forwards, upstreams)
 
         assert "anthropic" in upstream_changes
         assert upstream_changes["anthropic"] == ["skills/storage/anthropic/pdf/SKILL.md"]
@@ -51,9 +50,8 @@ class TestClassifyChanges:
 
         status_output = " M skills/storage/anthropic/pdf/SKILL.md\n"
 
-        upstream_changes, manual_changes = classify_changes(
-            status_output, forwards, upstreams, repo_root
-        )
+        svc = CommitService(repo_root=repo_root)
+        upstream_changes, manual_changes = svc.classify(status_output, forwards, upstreams)
 
         assert upstream_changes == {}
         assert manual_changes == ["skills/storage/anthropic/pdf/SKILL.md"]
@@ -73,9 +71,8 @@ class TestClassifyChanges:
         ]
 
         status_output = " M skills/storage/custom/SKILL.md\n"
-        upstream_changes, manual_changes = classify_changes(
-            status_output, forwards, upstreams, repo_root
-        )
+        svc = CommitService(repo_root=repo_root)
+        upstream_changes, manual_changes = svc.classify(status_output, forwards, upstreams)
 
         assert "custom-up" in upstream_changes
         assert upstream_changes["custom-up"] == ["skills/storage/custom/SKILL.md"]
@@ -109,8 +106,8 @@ class TestCommitAndPush:
             upstreams={"default": "sync: update from {upstream_name} [{datetime}]"}
         )
 
-        success = commit_and_push(
-            repo_root=str(git_repo),
+        svc = CommitService(repo_root=str(git_repo))
+        success = svc.commit_and_push(
             upstream_changes={},
             manual_changes=["skills/my_skills/SKILL.md"],
             branch="main",
@@ -140,8 +137,8 @@ class TestCommitAndPush:
             upstreams={"anthropic": "sync: auto-update from {upstream_name} [{datetime}]"}
         )
 
-        success = commit_and_push(
-            repo_root=str(git_repo),
+        svc = CommitService(repo_root=str(git_repo))
+        success = svc.commit_and_push(
             upstream_changes={"anthropic": ["skills/storage/anthropic/a.txt"]},
             manual_changes=["skills/storage/my_skills/b.txt"],
             branch="main",
@@ -161,8 +158,8 @@ class TestCommitAndPush:
 
     def test_clean_repo_returns_true(self, git_repo):
         messages = CommitMessages()
-        success = commit_and_push(
-            repo_root=str(git_repo),
+        svc = CommitService(repo_root=str(git_repo))
+        success = svc.commit_and_push(
             upstream_changes={},
             manual_changes=[],
             branch="main",
@@ -191,8 +188,8 @@ class TestCommitAndPush:
             upstreams={"affaan": "sync: auto-update from {upstream_name} [{datetime}]"}
         )
 
-        success = commit_and_push(
-            repo_root=str(git_repo),
+        svc = CommitService(repo_root=str(git_repo))
+        success = svc.commit_and_push(
             upstream_changes={"affaan": ["skills/storage/affaan/.gitignore"]},
             manual_changes=[],
             branch="main",

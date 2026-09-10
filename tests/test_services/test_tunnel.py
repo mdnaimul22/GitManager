@@ -5,7 +5,7 @@ Tests for Tunnel and Tailscale Service.
 from unittest.mock import patch
 
 from src.schema import TunnelStatus
-from src.services.tunnel import get_tunnel_status, toggle_funnel
+from src.services.tunnel import TunnelService
 
 
 class TestTunnelService:
@@ -14,7 +14,7 @@ class TestTunnelService:
     @patch("src.services.tunnel.is_tailscale_installed", return_value=False)
     def test_get_tunnel_status_not_installed(self, mock_installed):
         # Arrange & Act
-        status = get_tunnel_status(port=8000)
+        status = TunnelService(port=8000).get_status()
 
         # Assert
         assert isinstance(status, TunnelStatus)
@@ -30,7 +30,7 @@ class TestTunnelService:
         mock_run_json.return_value = (False, None, "daemon not responding")
 
         # Act
-        status = get_tunnel_status(port=8000)
+        status = TunnelService(port=8000).get_status()
 
         # Assert
         assert status.installed is True
@@ -61,7 +61,7 @@ class TestTunnelService:
         mock_run_json.side_effect = side_effect
 
         # Act
-        status = get_tunnel_status(port=8000)
+        status = TunnelService(port=8000).get_status()
 
         # Assert
         assert status.installed is True
@@ -91,7 +91,7 @@ class TestTunnelService:
         mock_run_json.side_effect = side_effect
 
         # Act
-        status = get_tunnel_status(port=8000)
+        status = TunnelService(port=8000).get_status()
 
         # Assert
         assert status.installed is True
@@ -106,7 +106,7 @@ class TestTunnelService:
         mock_cmd.return_value = (True, "Funnel started")
 
         # Act
-        ok, msg = toggle_funnel(enable=True, port=8000)
+        ok, msg = TunnelService(port=8000).toggle(enable=True)
 
         # Assert
         assert ok is True
@@ -119,7 +119,7 @@ class TestTunnelService:
         mock_cmd.return_value = (True, "Funnel stopped")
 
         # Act
-        ok, msg = toggle_funnel(enable=False, port=8000)
+        ok, msg = TunnelService(port=8000).toggle(enable=False)
 
         # Assert
         assert ok is True

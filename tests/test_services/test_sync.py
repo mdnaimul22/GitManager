@@ -2,19 +2,19 @@
 Sync Service orchestrator tests.
 
 Covers:
-- sync_job full execution flow
+- SyncService.run: full execution flow
 """
 
 import pytest
 from src.core.watcher import ConfigWatcher
-from src.services.sync import sync_job
+from src.services.sync import SyncService
 
 
-class TestSyncJob:
-    """Tests for full sync_job orchestration pipeline."""
+class TestSyncService:
+    """Tests for full SyncService orchestration pipeline."""
 
-    def test_sync_job_runs_with_watcher(self):
+    def test_sync_service_runs_with_watcher(self):
         watcher = ConfigWatcher("test-project", "/tmp/test-project")
-        # Run sync_job (handles errors gracefully and logs steps)
-        sync_job(watcher)
+        # Run SyncService (handles errors gracefully and logs steps)
+        SyncService(watcher).run()
         assert True

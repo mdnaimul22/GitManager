@@ -19,6 +19,8 @@ from .models import (
     ProjectUpdate,
     LoginRequest,
     TunnelStatus,
+    FunnelToggleRequest,
+    FunnelToggleResponse,
     generate_hash_id,
 )
 
@@ -40,4 +42,7 @@ __all__ = [
     "ProjectUpdate",
     "LoginRequest",
     "TunnelStatus",
+    "FunnelToggleRequest",
+    "FunnelToggleResponse",
 ]
+

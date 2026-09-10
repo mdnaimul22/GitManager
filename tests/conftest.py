@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.config import Settings
-from src.core import WorkerPool
+from src.services import WorkerPool
 from src.routers import set_pool
 
 

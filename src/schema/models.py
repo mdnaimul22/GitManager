@@ -236,3 +236,30 @@ class TunnelStatus(BaseModel):
     funnel_url: Optional[str] = None
     port: int = 8000
     error: Optional[str] = None
+
+
+class FunnelToggleRequest(BaseModel):
+    """API input for toggling Tailscale funnel."""
+    enable: bool = Field(default=True, description="Enable or disable Tailscale funnel")
+
+    model_config = {"populate_by_name": True, "extra": "ignore"}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _remap_enable(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "enabled" in data and "enable" not in data:
+                data["enable"] = data["enabled"]
+        return data
+
+
+TunnelToggleRequest = FunnelToggleRequest
+
+
+class FunnelToggleResponse(BaseModel):
+    """API response after toggling Tailscale funnel."""
+    status: str = "ok"
+    message: str = ""
+    tunnel: TunnelStatus
+
+

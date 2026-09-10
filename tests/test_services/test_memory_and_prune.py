@@ -15,8 +15,7 @@ import pytest
 from src.config import exists, is_file, is_dir, read_json, write_json, Settings
 from src.schema.models import ForwardRule, MemoryEntry, UpstreamEntry
 from src.services.forward import (
-    cleanup_orphans,
-    forward_skills,
+    ForwardService,
     load_memory,
     save_memory,
 )
@@ -88,7 +87,7 @@ class TestStructuredMemoryAndAutoPrune:
             enabled=True,
         )
 
-        copied, memory = forward_skills([rule])
+        copied, memory = ForwardService().forward([rule])
         assert len(copied) == 1
 
         # Destination must contain valid_skill
@@ -125,7 +124,7 @@ class TestStructuredMemoryAndAutoPrune:
             to_path=str(dst_dir),
             enabled=True,
         )
-        _, mem_v1 = forward_skills([rule_v1])
+        _, mem_v1 = ForwardService().forward([rule_v1])
         assert (dst_dir / "ADOPTERS.md").exists()
         assert (dst_dir / "bun.lock").exists()
 
@@ -139,11 +138,11 @@ class TestStructuredMemoryAndAutoPrune:
         )
 
         # Cleanup orphans detects from_path changed and purges dst
-        removed = cleanup_orphans(previous=mem_v1, current=[rule_v2])
+        removed = ForwardService().cleanup_orphans(previous=mem_v1, current=[rule_v2])
         assert len(removed) >= 1
 
-        # Now forward_skills mirrors new source
-        _, mem_v2 = forward_skills([rule_v2])
+        # Now ForwardService mirrors new source
+        _, mem_v2 = ForwardService().forward([rule_v2])
 
         # VERIFY: my_skill exists directly in dst
         assert (dst_dir / "my_skill" / "SKILL.md").exists()
@@ -172,7 +171,7 @@ class TestStructuredMemoryAndAutoPrune:
         ]
 
         # Action: delete f2 (submit only f1 and f3)
-        removed = cleanup_orphans(
+        removed = ForwardService().cleanup_orphans(
             previous=mem_entries,
             current=[f1, f3],
             upstreams=[up],
@@ -203,7 +202,7 @@ class TestStructuredMemoryAndAutoPrune:
 
         # Action: Delete upstream A entirely (submit only up_b and its forward)
         f_b1 = ForwardRule(forward_id="fb1", upstream_id="up-B", to_path=str(d_b1))
-        removed = cleanup_orphans(
+        removed = ForwardService().cleanup_orphans(
             previous=mem_entries,
             current=[f_b1],
             upstreams=[up_b],
@@ -227,7 +226,7 @@ class TestStructuredMemoryAndAutoPrune:
         rule = ForwardRule(forward_id="fwd-rename", upstream_id="up-1", to_path=str(new_dst))
         mem_entry = MemoryEntry(forward_id="fwd-rename", upstream_id="up-1", to_path=str(old_dst))
 
-        removed = cleanup_orphans(
+        removed = ForwardService().cleanup_orphans(
             previous=[mem_entry],
             current=[rule],
             upstreams=[UpstreamEntry(upstream_id="up-1")],

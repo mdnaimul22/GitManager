@@ -18,7 +18,7 @@ class TestSystemTunnelAPI:
         resp_post = client.post("/api/system/tunnel/funnel", json={"enable": True})
         assert resp_post.status_code == 401
 
-    @patch("src.routers.system.get_tunnel_status")
+    @patch("src.services.tunnel.TunnelService.get_status")
     def test_get_tunnel_status_endpoint(self, mock_get_status, auth_client):
         # Arrange
         mock_get_status.return_value = TunnelStatus(
@@ -41,8 +41,8 @@ class TestSystemTunnelAPI:
         assert data["funnel_active"] is True
         assert data["funnel_url"] == "https://test.ts.net"
 
-    @patch("src.routers.system.toggle_funnel")
-    @patch("src.routers.system.get_tunnel_status")
+    @patch("src.services.tunnel.TunnelService.toggle")
+    @patch("src.services.tunnel.TunnelService.get_status")
     def test_toggle_funnel_success(self, mock_get_status, mock_toggle, auth_client):
         # Arrange
         mock_toggle.return_value = (True, "Funnel updated")
@@ -64,7 +64,7 @@ class TestSystemTunnelAPI:
         assert data["status"] == "ok"
         assert "Funnel updated" in data["message"]
 
-    @patch("src.routers.system.toggle_funnel")
+    @patch("src.services.tunnel.TunnelService.toggle")
     def test_toggle_funnel_failure(self, mock_toggle, auth_client):
         # Arrange
         mock_toggle.return_value = (False, "Permission denied")
@@ -76,3 +76,24 @@ class TestSystemTunnelAPI:
         assert resp.status_code == 400
         data = resp.json()
         assert "Permission denied" in data["detail"]
+
+    @patch("src.services.tunnel.TunnelService.toggle")
+    @patch("src.services.tunnel.TunnelService.get_status")
+    def test_toggle_funnel_with_enabled_alias(self, mock_get_status, mock_toggle, auth_client):
+        """Verify that payload with 'enabled' instead of 'enable' is accepted seamlessly."""
+        mock_toggle.return_value = (True, "Funnel disabled")
+        mock_get_status.return_value = TunnelStatus(
+            installed=True,
+            running=True,
+            funnel_active=False,
+            port=8000,
+        )
+
+        resp = auth_client.post("/api/system/tunnel/funnel", json={"enabled": False})
+
+        assert resp.status_code == 200
+        mock_toggle.assert_called_once_with(False)
+        data = resp.json()
+        assert data["status"] == "ok"
+        assert data["tunnel"]["funnel_active"] is False
+
